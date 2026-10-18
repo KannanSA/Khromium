@@ -39,6 +39,7 @@
 #include "chrome/browser/hid/hid_policy_allowed_devices.h"
 #include "chrome/browser/intranet_redirect_detector.h"
 #include "chrome/browser/lifetime/browser_shutdown.h"
+#include "chrome/browser/khromium/khromium_service.h"
 #include "chrome/browser/login_detection/login_detection_prefs.h"
 #include "chrome/browser/media/media_engagement_service.h"
 #include "chrome/browser/media/media_storage_id_salt.h"
@@ -1996,6 +1997,7 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
 void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
                           const std::string& locale) {
   TRACE_EVENT0("browser", "chrome::RegisterProfilePrefs");
+  khromium::KhromiumService::RegisterProfilePrefs(registry);
   // User prefs. Please keep this list alphabetized.
   AccessibilityLabelsService::RegisterProfilePrefs(registry);
   registry->RegisterBooleanPref(prefs::kRendererAccessibilityEnabled, true);

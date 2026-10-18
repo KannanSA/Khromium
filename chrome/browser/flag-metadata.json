@@ -28,6 +28,11 @@
 
 [
   {
+    "name": "khromium-ai-ad-shield",
+    "owners": [ "//chrome/browser/khromium/OWNERS" ],
+    "expiry_milestone": 170
+  },
+  {
     "name": "aaudio-per-stream-device-selection",
     "owners": [ "mjel@google.com", "lt-web-apps-team@google.com" ],
     "expiry_milestone": 165

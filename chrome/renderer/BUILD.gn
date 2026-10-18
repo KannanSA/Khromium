@@ -168,6 +168,7 @@ static_library("renderer") {
     "//components/network_hints/renderer",
     "//components/no_state_prefetch/common",
     "//components/no_state_prefetch/renderer",
+    "//chrome/renderer/khromium",
     "//components/omnibox/common",
     "//components/optimization_guide/content/renderer",
     "//components/optimization_guide/core:features",

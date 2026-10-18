@@ -97,6 +97,7 @@
 #include "components/browsing_data/core/features.h"
 #include "components/collaboration/public/features.h"
 #include "components/commerce/core/commerce_feature_list.h"
+#include "components/khromium/features.h"
 #include "components/commerce/core/flag_descriptions.h"
 #include "components/component_updater/component_updater_command_line_config_policy.h"
 #include "components/component_updater/component_updater_switches.h"
@@ -11935,6 +11936,12 @@ const FeatureEntry kFeatureEntries[] = {
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
     BUILDFLAG(IS_CHROMEOS)
+    {"khromium-ai-ad-shield", "Khromium AI ad and anti-adblock shield",
+     "Asks OpenAI or Grok about suspected anti-adblock walls and obfuscated "
+     "ad overlays. Requires an API key in the environment or the Khromium "
+     "config file. Disabled by default.",
+     kOsDesktop, FEATURE_VALUE_TYPE(khromium::kKhromiumAiAdShield)},
+
     {"tab-group-home", tabs::flag_descriptions::kTabGroupHomeName,
      tabs::flag_descriptions::kTabGroupHomeDescription, kOsDesktop,
      FEATURE_VALUE_TYPE(tabs::kTabGroupHome)},

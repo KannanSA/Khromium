@@ -1,0 +1,25 @@
+// Copyright 2026 The Khromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "components/khromium/system_prompt.h"
+
+namespace khromium {
+
+std::string_view GetSystemPrompt() {
+  return R"PROMPT(You classify a trimmed DOM and script snippet from a web page for Khromium Shield.
+Determine whether it contains an anti-adblock wall or an obfuscated ad container that should be removed.
+
+Return only a JSON object with exactly these fields and no markdown:
+{"block": true or false, "selectors": ["css selectors"], "restore_scroll": true or false, "reason": "short sentence"}
+
+Rules:
+- Set block to true only for an anti-adblock modal, a viewport-covering overlay that demands the ad blocker be disabled, a scroll lock used to enforce that wall, or an obfuscated ad container.
+- selectors must be copied from ids, classes, or attributes that appear in the snippet. Do not invent selectors. Use at most 8.
+- Set restore_scroll to true when html or body hides overflow or a full-viewport overlay is blocking scrolling.
+- Set block to false, selectors to [], and restore_scroll to false for ordinary page content.
+- reason is one short sentence and must not repeat the snippet.
+- Output JSON only.)PROMPT";
+}
+
+}  // namespace khromium
