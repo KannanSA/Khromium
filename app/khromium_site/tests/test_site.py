@@ -24,7 +24,7 @@ from http.server import ThreadingHTTPServer
 from urllib.parse import parse_qs
 
 from khromium_classifier.license_key import verify
-from khromium_site.config import INTEGRATION_IDENTIFIER, plans
+from khromium_site.config import INTEGRATION_IDENTIFIER, PLANS
 from khromium_site.issuance import LicenseStore, default_licenses_path, issue_from_session
 from khromium_site.pages import render_home, render_success
 from khromium_site.server import Site
@@ -80,18 +80,22 @@ def payload_of(token: str) -> dict:
     return json.loads(base64.urlsafe_b64decode(part + pad))
 
 
+def license_active(status: dict) -> bool:
+    if status.get("entitled") is True:
+        return True
+    return bool(status.get("entitled_browser") or status.get("entitled_ai"))
+
+
 def paid_session(
     session_id="cs_test_paid12345",
     email="buyer@example.com",
-    plan="browser",
+    plan="yearly",
     payment_status="paid",
     subscription_status="active",
 ):
-    offer = plans()[plan]
     return {
         "id": session_id,
         "object": "checkout.session",
-        "mode": offer["mode"],
         "payment_status": payment_status,
         "status": "complete",
         "customer_details": {"email": email},
@@ -99,7 +103,7 @@ def paid_session(
         "subscription": {"id": "sub_test_12345678", "status": subscription_status},
         "metadata": {
             "plan": plan,
-            "amount_usd": offer["amount"],
+            "amount_usd": PLANS[plan]["amount"],
             "product": "khromium-shield",
         },
     }
@@ -125,10 +129,8 @@ class PageTests(EnvCase):
         page = render_home()
         self.assertIn("Khromium", page)
         self.assertIn("Get Khromium", page)
-        self.assertIn("$49.00", page)
-        self.assertIn("$10.00", page)
-        self.assertNotIn("7.99", page)
-        self.assertNotIn("$69", page)
+        self.assertIn("$7.99", page)
+        self.assertIn("$69.00", page)
         self.assertIn("Windows", page)
         self.assertIn("macOS", page)
         self.assertIn("Linux", page)
@@ -151,7 +153,7 @@ class PageTests(EnvCase):
             {
                 "key": "KHRO1.example.example",
                 "email": "buyer@example.com",
-                "plan": "browser",
+                "plan": "yearly",
             }
         )
         self.assertNotIn("javascript:", page)
@@ -184,14 +186,14 @@ class CheckoutTests(EnvCase):
             }
         )
 
-    def test_checkout_posts_one_time_and_monthly_modes(self):
+    def test_checkout_posts_price_amount_and_subscription_mode(self):
         os.environ["STRIPE_SECRET_KEY"] = "sk_test_fake"
-        os.environ["STRIPE_PRICE_BROWSER"] = "price_browser_test"
-        os.environ["STRIPE_PRICE_AI_MONTHLY"] = "price_ai_monthly_test"
+        os.environ["STRIPE_PRICE_MONTHLY"] = "price_month_test"
+        os.environ["STRIPE_PRICE_YEARLY"] = "price_year_test"
         client = StripeClient(opener=self.opener)
         cases = (
-            ("browser", "payment", "price_browser_test", "49.00"),
-            ("ai_monthly", "subscription", "price_ai_monthly_test", "10.00"),
+            ("monthly", "subscription", "price_month_test", "7.99"),
+            ("yearly", "subscription", "price_year_test", "69.00"),
         )
         for plan, mode, price, amount in cases:
             url = client.create_checkout_session(plan, "http://127.0.0.1:8787")
@@ -206,10 +208,7 @@ class CheckoutTests(EnvCase):
             self.assertNotIn("%7BCHECKOUT_SESSION_ID%7D", sent["body"])
             parsed = parse_qs(sent["body"])
             self.assertEqual(parsed["mode"], [mode])
-            if mode == "payment":
-                self.assertNotIn("subscription_data[metadata][plan]", parsed)
-            else:
-                self.assertEqual(parsed["subscription_data[metadata][plan]"], [plan])
+            self.assertEqual(parsed["subscription_data[metadata][plan]"], [plan])
             self.assertEqual(parsed["line_items[0][price]"], [price])
             self.assertEqual(parsed["line_items[0][quantity]"], ["1"])
             self.assertEqual(parsed["metadata[amount_usd]"], [amount])
@@ -232,11 +231,11 @@ class CheckoutTests(EnvCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             site = Site(opener=opener, licenses_path=Path(tmp) / "issued.json")
-            status, _location, page = site.start_checkout("browser")
+            status, _location, page = site.start_checkout("monthly")
         self.assertEqual(called, [])
         self.assertEqual(status, 503)
-        self.assertIn("STRIPE_PRICE_BROWSER", page)
-        self.assertIn("$49.00", page)
+        self.assertIn("STRIPE_PRICE_MONTHLY", page)
+        self.assertIn("$7.99", page)
         self.assertNotIn("sk_test_supersecretvalue", page)
         self.assertNotIn("Google Chrome", page)
 
@@ -256,7 +255,7 @@ class IssuanceTests(EnvCase):
             session_id="cs_test_unpaid1234",
             payment_status="unpaid",
             subscription_status="incomplete",
-            plan="browser",
+            plan="monthly",
         )
         result = issue_from_session(session, self.store, now=1_700_000_000)
         self.assertFalse(result.issued)
@@ -269,13 +268,8 @@ class IssuanceTests(EnvCase):
         self.assertTrue(result.issued)
         token = result.record["key"]
         status = verify(token, now=1_700_000_000 + 10)
-        self.assertTrue(status["entitled_browser"])
-        self.assertTrue(status["entitled_ai"])
-        self.assertEqual(status["plan"], "browser")
-        self.assertEqual(status["ai_until"], 1_700_000_000 + 30 * 86400)
-        later = verify(token, now=1_700_000_000 + 31 * 86400)
-        self.assertTrue(later["entitled_browser"])
-        self.assertFalse(later["entitled_ai"])
+        self.assertTrue(license_active(status))
+        self.assertEqual(result.record["plan"], "yearly")
         self.assertEqual(payload_of(token)["sub"], "buyer@example.com")
         again = issue_from_session(session, self.store, now=1_800_000_000)
         self.assertEqual(again.record["key"], token)
@@ -284,16 +278,14 @@ class IssuanceTests(EnvCase):
         session = paid_session(
             session_id="cs_test_trial12345",
             email="trial@example.com",
-            plan="ai_monthly",
+            plan="monthly",
             payment_status="no_payment_required",
             subscription_status="trialing",
         )
         result = issue_from_session(session, self.store, now=1_700_000_000)
         status = verify(result.record["key"], now=1_700_000_000 + 10)
-        self.assertTrue(status["entitled_ai"])
-        self.assertFalse(status["entitled_browser"])
-        self.assertEqual(status["plan"], "ai_monthly")
-        self.assertEqual(status["ai_until"], status["exp"])
+        self.assertTrue(license_active(status))
+        self.assertEqual(result.record["plan"], "monthly")
         self.assertEqual(payload_of(result.record["key"])["sub"], "trial@example.com")
 
     def test_customer_email_field_is_accepted(self):
@@ -414,10 +406,8 @@ class ServerTests(EnvCase):
         self.assertEqual(status, 200)
         self.assertIn("text/html", headers["content-type"])
         self.assertIn("Khromium", page)
-        self.assertIn("$49.00", page)
-        self.assertIn("$10.00", page)
-        self.assertNotIn("7.99", page)
-        self.assertNotIn("$69", page)
+        self.assertIn("$7.99", page)
+        self.assertIn("$69.00", page)
         self.assertIn("Get Khromium", page)
         self.assertNotIn("Google Chrome", page)
         self.assertIsNone(re.search(r"\bChrome\b", page))
@@ -425,11 +415,11 @@ class ServerTests(EnvCase):
 
     def test_checkout_redirects_to_stripe(self):
         os.environ["STRIPE_SECRET_KEY"] = "sk_test_fake"
-        os.environ["STRIPE_PRICE_AI_MONTHLY"] = "price_ai_monthly_test"
+        os.environ["STRIPE_PRICE_MONTHLY"] = "price_month_test"
         status, headers, _body = self.request(
             "POST",
             "/checkout",
-            body=b"plan=ai_monthly",
+            body=b"plan=monthly",
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         self.assertEqual(status, 303)
@@ -440,8 +430,8 @@ class ServerTests(EnvCase):
         self.assertEqual(self.calls[0]["method"], "POST")
         parsed = parse_qs(self.calls[0]["body"])
         self.assertEqual(parsed["mode"], ["subscription"])
-        self.assertEqual(parsed["line_items[0][price]"], ["price_ai_monthly_test"])
-        self.assertEqual(parsed["metadata[amount_usd]"], ["10.00"])
+        self.assertEqual(parsed["line_items[0][price]"], ["price_month_test"])
+        self.assertEqual(parsed["metadata[amount_usd]"], ["7.99"])
         self.assertIn("{CHECKOUT_SESSION_ID}", parsed["success_url"][0])
         self.assertTrue(parsed["cancel_url"][0].endswith("/"))
 
@@ -451,13 +441,13 @@ class ServerTests(EnvCase):
         status, _headers, body = self.request(
             "POST",
             "/checkout",
-            body=b"plan=browser",
+            body=b"plan=yearly",
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         page = body.decode()
         self.assertEqual(status, 503)
-        self.assertIn("STRIPE_PRICE_BROWSER", page)
-        self.assertIn("$49.00", page)
+        self.assertIn("STRIPE_PRICE_YEARLY", page)
+        self.assertIn("$69.00", page)
         self.assertNotIn("sk_test_supersecretvalue", page)
         self.assertEqual(self.calls, [])
 
@@ -468,7 +458,7 @@ class ServerTests(EnvCase):
             session_id=session_id,
             payment_status="unpaid",
             subscription_status="incomplete",
-            plan="browser",
+            plan="monthly",
         )
         status, _headers, body = self.request("GET", f"/success?session_id={session_id}")
         page = body.decode()
@@ -517,10 +507,7 @@ class ServerTests(EnvCase):
         self.assertNotIn("KHRO1.", body.decode())
         stored = json.loads((Path(self.tmp.name) / "issued.json").read_text(encoding="utf-8"))
         token = stored["sessions"][session["id"]]["key"]
-        live = verify(token)
-        self.assertTrue(live["entitled_browser"])
-        self.assertTrue(live["entitled_ai"])
-        self.assertEqual(live["plan"], "browser")
+        self.assertTrue(license_active(verify(token)))
 
         page_status, _page_headers, page_body = self.request(
             "GET",

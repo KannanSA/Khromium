@@ -13,7 +13,7 @@ from khromium_site.config import (
     API_VERSION,
     INTEGRATION_IDENTIFIER,
     ConfigError,
-    plans,
+    PLANS,
     price_id,
     public_base,
     secret_key,
@@ -103,31 +103,27 @@ class StripeClient:
         return payload
 
     def create_checkout_session(self, plan: str, base_url: str) -> str:
-        current = plans()
-        if plan not in current:
-            raise ConfigError("Choose the browser purchase or the monthly AI plan.")
-        spec = current[plan]
+        if plan not in PLANS:
+            raise ConfigError("Choose the monthly or yearly plan.")
+        spec = PLANS[plan]
         chosen_price = price_id(plan)
         success = f"{base_url}/success?session_id={{CHECKOUT_SESSION_ID}}"
         cancel = f"{base_url}/"
-        # Browser is a one-time Price (mode=payment). Monthly AI is a
-        # recurring Price (mode=subscription). Do not send subscription_data
-        # on the one-time session.
-        fields = [
-            ("mode", spec["mode"]),
-            ("line_items[0][price]", chosen_price),
-            ("line_items[0][quantity]", "1"),
-            ("success_url", success),
-            ("cancel_url", cancel),
-            ("metadata[plan]", plan),
-            ("metadata[amount_usd]", spec["amount"]),
-            ("metadata[product]", "khromium-shield"),
-            ("client_reference_id", plan),
-            ("integration_identifier", INTEGRATION_IDENTIFIER),
-        ]
-        if spec["mode"] == "subscription":
-            fields.append(("subscription_data[metadata][plan]", plan))
-        body = encode_form(fields)
+        body = encode_form(
+            [
+                ("mode", "subscription"),
+                ("line_items[0][price]", chosen_price),
+                ("line_items[0][quantity]", "1"),
+                ("success_url", success),
+                ("cancel_url", cancel),
+                ("metadata[plan]", plan),
+                ("metadata[amount_usd]", spec["amount"]),
+                ("metadata[product]", "khromium-shield"),
+                ("subscription_data[metadata][plan]", plan),
+                ("client_reference_id", plan),
+                ("integration_identifier", INTEGRATION_IDENTIFIER),
+            ]
+        )
         payload = self._request("POST", "/v1/checkout/sessions", body)
         url = str(payload.get("url") or "")
         if not _checkout_host_ok(url):

@@ -7,64 +7,40 @@ import os
 import secrets
 from urllib.parse import urlsplit
 
-import sys
-from pathlib import Path
+from khromium_classifier import license_key as _license_key
 
-_CLASSIFIER = Path(__file__).resolve().parents[2] / "khromium_classifier"
-if str(_CLASSIFIER) not in sys.path:
-    sys.path.insert(0, str(_CLASSIFIER))
 
-from khromium_classifier.license_key import (  # noqa: E402
-    api_cost_cents,
-    browser_price_cents,
-    customer_monthly_cents,
-)
+def _price(name: str, fallback: float) -> str:
+    table = getattr(_license_key, "PRICES_USD", None) or {}
+    return f"{float(table.get(name, fallback)):.2f}"
+
+
+_MONTHLY = _price("monthly", 7.99)
+_YEARLY = _price("yearly", 69.00)
 
 API_VERSION = "2026-09-30.endive"
 INTEGRATION_IDENTIFIER = "khromium_shield_checkout_" + "".join(
     secrets.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(8)
 )
 
-def _dollars(cents: int) -> str:
-    return f"{cents / 100:.2f}"
-
-
-def plans() -> dict:
-    """The two paid offers. Prices are computed, not the old $7.99 / $69 plans.
-
-    The monthly customer price is always twice ``KHROMIUM_API_COST_CENTS``.
-    When that variable is unset the API cost is the 500-cent placeholder,
-    so the displayed monthly price is $10.00. The owner must set the real
-    provider cost before charging. The browser price defaults to $49.00.
-    """
-
-    cost = api_cost_cents()
-    monthly = customer_monthly_cents(cost)
-    browser = browser_price_cents()
-    placeholder = not os.environ.get("KHROMIUM_API_COST_CENTS", "").strip()
-    return {
-        "browser": {
-            "amount": _dollars(browser),
-            "display": f"${_dollars(browser)}",
-            "interval": "one time",
-            "env": "STRIPE_PRICE_BROWSER",
-            "mode": "payment",
-            "label": "Browser",
-            "detail": "Pay once. Includes 30 days of AI protection.",
-            "placeholder": False,
-        },
-        "ai_monthly": {
-            "amount": _dollars(monthly),
-            "display": f"${_dollars(monthly)}",
-            "interval": "per month",
-            "env": "STRIPE_PRICE_AI_MONTHLY",
-            "mode": "subscription",
-            "label": "AI protection",
-            "detail": "Twice the API cost. AI only, after or instead of the trial.",
-            "placeholder": placeholder,
-            "api_cost_display": f"${_dollars(cost)}",
-        },
-    }
+PLANS = {
+    "monthly": {
+        "amount": _MONTHLY,
+        "display": f"${_MONTHLY}",
+        "interval": "per month",
+        "env": "STRIPE_PRICE_MONTHLY",
+        "days": 31,
+        "label": "Monthly",
+    },
+    "yearly": {
+        "amount": _YEARLY,
+        "display": f"${_YEARLY}",
+        "interval": "per year",
+        "env": "STRIPE_PRICE_YEARLY",
+        "days": 365,
+        "label": "Yearly",
+    },
+}
 
 DOWNLOADS = (
     ("win", "Windows", "KHROMIUM_DOWNLOAD_URL_WIN", "/downloads/khromium-windows"),
@@ -95,10 +71,9 @@ def secret_key() -> str:
 
 
 def price_id(plan: str) -> str:
-    current = plans()
-    if plan not in current:
-        raise ConfigError("Choose the browser purchase or the monthly AI plan.")
-    spec = current[plan]
+    if plan not in PLANS:
+        raise ConfigError("Choose the monthly or yearly plan.")
+    spec = PLANS[plan]
     problems: list[str] = []
     try:
         secret_key()

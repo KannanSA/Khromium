@@ -56,11 +56,13 @@ Environment:
 | `KHROMIUM_API_COST_CENTS` | Provider cost per subscriber per month. Default `500` (placeholder). |
 | `KHROMIUM_LICENSE_HMAC_SECRET` | HMAC secret. The source default is for tests only. |
 
-The download site in `app/khromium_site` is the only Checkout. It does not collect card numbers.
+The download site in `app/khromium_site` is the public Checkout. It does not collect card numbers. **Get Khromium** sells two subscriptions:
 
-- `POST /checkout` with `plan=browser` — Checkout `mode=payment` and `STRIPE_PRICE_BROWSER`
-- `POST /checkout` with `plan=ai_monthly` — Checkout `mode=subscription` and `STRIPE_PRICE_AI_MONTHLY`
-- `GET /success?session_id=...` — mints or extends a license **once per Checkout session id**. An unpaid session does not mint. A paid browser session sets `ai_until` 30 days out. A later paid monthly session for the same email extends AI from the current `ai_until`.
+- Monthly **$7.99** — `POST /checkout` with `plan=monthly`, Checkout `mode=subscription`, Price `STRIPE_PRICE_MONTHLY` (31 days).
+- Yearly **$69.00** — `POST /checkout` with `plan=yearly`, Checkout `mode=subscription`, Price `STRIPE_PRICE_YEARLY` (365 days).
+- `GET /success?session_id=...` mints a license **once per Checkout session id**. An unpaid session does not mint. The same session id always returns the same key.
+
+`mint()` writes the token. If its plans are `monthly` and `yearly`, those names are used. If it only accepts `ai_monthly`, the site mints that plan for the paid number of days so Shield's AI entitlement matches the term. That token does not set the separate browser-purchase entitlement. A browser purchase can still be minted by hand.
 
 The companion classifier does not start a second Checkout. It serves the AI proxy.
 

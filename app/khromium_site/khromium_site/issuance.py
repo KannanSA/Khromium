@@ -11,9 +11,9 @@ import threading
 import time
 from pathlib import Path
 
-from khromium_classifier.license_key import MONTH_SECONDS, mint, verify
+from khromium_classifier import license_key
 
-from khromium_site.config import plans
+from khromium_site.config import PLANS
 
 SESSION_RE = re.compile(r"^cs_[A-Za-z0-9_]{10,200}$")
 _PAYABLE_SUBSCRIPTION = {"active", "trialing"}
@@ -66,10 +66,8 @@ class LicenseStore:
 
     def get(self, session_id: str) -> dict | None:
         with self._exclusive():
-            current = self._read()["sessions"].get(session_id)
-            if isinstance(current, dict) and current.get("key"):
-                return dict(current)
-            return None
+            row = self._read()["sessions"].get(session_id)
+            return dict(row) if isinstance(row, dict) else None
 
     def put_if_absent(self, session_id: str, builder):
         with self._exclusive():
@@ -110,9 +108,10 @@ class _FileLock:
 def mint_checkout_plan(plan: str, subject: str, days: int, now: int) -> str:
     """Mint with the classifier helper.
 
-    The committed helper uses ``monthly`` and ``yearly``. A revised helper
-    that only knows ``ai_monthly`` still gets a token ``verify()`` accepts,
-    for the same number of days the buyer paid for.
+    Monthly and yearly are the checkout plans. When the helper only accepts
+    ``ai_monthly``, that token is used for the same number of paid days so
+    ``verify()`` still accepts the key and Shield's AI entitlement matches
+    the term. It does not grant the separate browser-purchase entitlement.
     """
 
     known = set(license_key.PLANS)
@@ -156,15 +155,8 @@ def customer_email(session: dict) -> str:
 def session_plan(session: dict) -> str:
     metadata = session.get("metadata") if isinstance(session.get("metadata"), dict) else {}
     plan = str(metadata.get("plan") or "").strip().lower()
-    if plan not in plans():
-        mode = str(session.get("mode") or "")
-        if mode == "payment":
-            return "browser"
-        if mode == "subscription":
-            return "ai_monthly"
-        raise IssuanceError(
-            "Stripe did not return a browser or monthly AI plan on this session."
-        )
+    if plan not in PLANS:
+        raise IssuanceError("Stripe did not return a monthly or yearly plan on this session.")
     return plan
 
 
@@ -188,23 +180,7 @@ def issue_from_session(session: dict, store: LicenseStore, now: float | None = N
             raise IssuanceError("missing email")
         plan = session_plan(session)
         issued_at = int(now if now is not None else time.time())
-        if plan == "ai_monthly":
-            # Already inside the store lock. Extend from the latest AI term
-            # for this email so a renewal does not shorten a current month.
-            latest = issued_at
-            for record in store._read()["sessions"].values():
-                if not isinstance(record, dict):
-                    continue
-                if record.get("plan") != "ai_monthly" or record.get("email") != email:
-                    continue
-                status = verify(str(record.get("key") or ""), now=issued_at)
-                if int(status.get("ai_until") or 0) > latest:
-                    latest = int(status["ai_until"])
-            period_end = latest + MONTH_SECONDS
-            token = mint(plan, email, now=issued_at, exp=period_end, ai_until=period_end)
-        else:
-            # One-time browser purchase: exp is ~100 years, AI trial is 30 days.
-            token = mint("browser", email, now=issued_at)
+        token = mint_checkout_plan(plan, email, PLANS[plan]["days"], issued_at)
         return {
             "key": token,
             "email": email,

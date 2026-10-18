@@ -6,7 +6,7 @@
 import html
 from pathlib import Path
 
-from khromium_site.config import download_targets, plans
+from khromium_site.config import PLANS, download_targets
 
 _CSS = Path(__file__).resolve().parent / "web" / "site.css"
 
@@ -38,15 +38,15 @@ def esc(value: object) -> str:
 
 def _layout(title: str, body: str, *, robots: str = "index,follow", script: str = "") -> str:
     css = _CSS.read_text(encoding="utf-8")
-    browser = plans()["browser"]["display"]
-    monthly = plans()["ai_monthly"]["display"]
+    monthly = PLANS["monthly"]["display"]
+    yearly = PLANS["yearly"]["display"]
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(title)}</title>
-<meta name="description" content="Buy Khromium. {esc(browser)} once, including 30 days of AI, or {esc(monthly)} per month for AI protection. Download for Windows, macOS, and Linux after checkout.">
+<meta name="description" content="Subscribe to Khromium. Monthly {esc(monthly)} or yearly {esc(yearly)}. Download for Windows, macOS, and Linux after checkout.">
 <meta name="robots" content="{esc(robots)}">
 <meta name="theme-color" content="#0f6b4c">
 <style>
@@ -63,7 +63,7 @@ def _layout(title: str, body: str, *, robots: str = "index,follow", script: str 
   <div class="wrap">
     <p>Khromium Shield is paid, closed-source software. Upstream Chromium in the project tree stays under the BSD license.</p>
     <p>Khromium is an independent project and is not affiliated with Google.</p>
-    <p>Browser {esc(browser)} once · AI protection {esc(monthly)} per month</p>
+    <p>Monthly {esc(monthly)} · Yearly {esc(yearly)}</p>
   </div>
 </footer>
 {script}
@@ -73,44 +73,32 @@ def _layout(title: str, body: str, *, robots: str = "index,follow", script: str 
 
 
 def render_home() -> str:
-    offers = plans()
-    browser = offers["browser"]
-    monthly = offers["ai_monthly"]
-    placeholder = ""
-    if monthly.get("placeholder"):
-        placeholder = (
-            f"<p class=\"fine\">The {esc(monthly['display'])} monthly price is "
-            f"twice a {esc(monthly['api_cost_display'])} API-cost placeholder. "
-            "Set KHROMIUM_API_COST_CENTS to the real provider cost before charging. "
-            "The Stripe Price should use that same customer amount.</p>"
-        )
+    monthly = PLANS["monthly"]
+    yearly = PLANS["yearly"]
     body = f"""
 <main id="main">
   <section class="hero wrap">
     <h1>Khromium</h1>
-    <p class="promise">Buy the browser once, or subscribe for AI ad-block protection.</p>
+    <p class="promise">A desktop browser with Shield for anti-adblock walls.</p>
     <form class="buy" method="post" action="/checkout">
       <fieldset class="plans" id="plans">
         <legend class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Choose a plan</legend>
         <label class="plan">
-          <input type="radio" name="plan" value="browser" checked>
-          <span class="plan-name">{esc(browser["label"])}</span>
-          <span class="plan-price">{esc(browser["display"])}</span>
-          <span class="plan-interval">{esc(browser["interval"])}</span>
-          <span class="plan-interval">{esc(browser["detail"])}</span>
+          <input type="radio" name="plan" value="yearly" checked>
+          <span class="plan-name">{esc(yearly["label"])}</span>
+          <span class="plan-price">{esc(yearly["display"])}</span>
+          <span class="plan-interval">{esc(yearly["interval"])}</span>
         </label>
         <label class="plan">
-          <input type="radio" name="plan" value="ai_monthly">
+          <input type="radio" name="plan" value="monthly">
           <span class="plan-name">{esc(monthly["label"])}</span>
           <span class="plan-price">{esc(monthly["display"])}</span>
           <span class="plan-interval">{esc(monthly["interval"])}</span>
-          <span class="plan-interval">{esc(monthly["detail"])}</span>
         </label>
       </fieldset>
       <button class="cta" type="submit">Get Khromium</button>
       <p class="platform" id="platform-note">For Windows, macOS, and Linux.</p>
-      <p class="fine">Checkout comes first. Khromium never sees your card number. Khromium holds the model API key. The license key and downloads are on the success page.</p>
-      {placeholder}
+      <p class="fine">Checkout comes first. Khromium never sees your card number. The license key and downloads are on the success page.</p>
     </form>
   </section>
   <section class="band" id="features">
@@ -118,25 +106,25 @@ def render_home() -> str:
       <article>
         {_MARK}
         <h2>Shield reads the wall</h2>
-        <p>While AI protection is active, Shield classifies an anti-adblock wall or an obfuscated ad container and clears the overlay. After the 30-day trial, that stops until the monthly AI plan starts. The browser purchase stays valid.</p>
+        <p>When a site hides the article behind an anti-adblock wall or an obfuscated ad container, Shield classifies that DOM and clears the overlay.</p>
       </article>
       <article>
         {_MARK}
-        <h2>Khromium provides the model</h2>
-        <p>Trial users and monthly subscribers do not paste an OpenAI or xAI key. The browser sends the license to Khromium's proxy. The provider key stays on the server.</p>
+        <h2>One key, two places</h2>
+        <p>The license key from checkout unlocks Shield in the browser and the companion classifier. It is bound to the email Stripe collects.</p>
       </article>
       <article>
         {_MARK}
         <h2>Three desktops</h2>
-        <p>Windows, macOS, and Linux builds are published by the owner. This page starts Checkout. It does not hand out a free installer.</p>
+        <p>Windows, macOS, and Linux builds are published by the owner. This page starts the subscription. It does not hand out a free installer.</p>
       </article>
     </div>
   </section>
   <section class="steps wrap">
     <h2>How to get Khromium</h2>
     <ol>
-      <li><strong>Choose an offer</strong> The browser is {esc(browser["display"])} once and includes 30 days of AI. Monthly AI is {esc(monthly["display"])} and does not include a lasting browser license.</li>
-      <li><strong>Pay on Stripe Checkout</strong> The browser is a one-time payment. Monthly AI is a subscription. Hosted Checkout collects the card. This site only receives the result.</li>
+      <li><strong>Choose a plan</strong> Monthly is {esc(monthly["display"])}. Yearly is {esc(yearly["display"])}.</li>
+      <li><strong>Pay on Stripe Checkout</strong> Hosted Checkout collects the card. This site only receives the result.</li>
       <li><strong>Copy the key and download</strong> The success page shows the license key and the Windows, macOS, and Linux links.</li>
     </ol>
   </section>
@@ -159,7 +147,7 @@ def render_message(title: str, detail: str, *, hint: str = "") -> str:
 
 
 def render_success(record: dict) -> str:
-    plan = plans().get(record.get("plan") or "", {})
+    plan = PLANS.get(record.get("plan") or "", {})
     label = plan.get("label", record.get("plan") or "")
     price = plan.get("display", "")
     price_bit = f" ({price})" if price else ""

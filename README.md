@@ -23,6 +23,7 @@ flowchart LR
 - [Chromium files to add or modify](docs/khromium/hooks.md)
 - [Browser purchase, monthly AI, and license keys](docs/khromium/commercial.md)
 - [Companion app](app/khromium_classifier/README.md)
+- [Download site](app/khromium_site/README.md)
 
 ## Apply and compile
 
