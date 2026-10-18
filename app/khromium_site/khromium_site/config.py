@@ -10,37 +10,41 @@ from urllib.parse import urlsplit
 from khromium_classifier import license_key as _license_key
 
 
-def _price(name: str, fallback: float) -> str:
-    table = getattr(_license_key, "PRICES_USD", None) or {}
-    return f"{float(table.get(name, fallback)):.2f}"
+def _money(cents: int) -> str:
+    return f"{cents / 100:.2f}"
 
 
-_MONTHLY = _price("monthly", 7.99)
-_YEARLY = _price("yearly", 69.00)
+def plans() -> dict:
+    """Offers read on each call so price env vars apply after import."""
+
+    browser = _money(_license_key.browser_price_cents())
+    monthly = _money(_license_key.customer_monthly_cents())
+    return {
+        "browser": {
+            "amount": browser,
+            "display": f"${browser}",
+            "interval": "once",
+            "env": "STRIPE_PRICE_BROWSER",
+            "mode": "payment",
+            "label": "Browser",
+            "detail": "One-time purchase. Includes 30 days of AI ad-block.",
+        },
+        "ai_monthly": {
+            "amount": monthly,
+            "display": f"${monthly}",
+            "interval": "per month",
+            "env": "STRIPE_PRICE_AI_MONTHLY",
+            "mode": "subscription",
+            "label": "Monthly AI",
+            "detail": "Twice the API cost. Khromium provides the model key. AI only.",
+        },
+    }
+
 
 API_VERSION = "2026-09-30.endive"
 INTEGRATION_IDENTIFIER = "khromium_shield_checkout_" + "".join(
     secrets.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(8)
 )
-
-PLANS = {
-    "monthly": {
-        "amount": _MONTHLY,
-        "display": f"${_MONTHLY}",
-        "interval": "per month",
-        "env": "STRIPE_PRICE_MONTHLY",
-        "days": 31,
-        "label": "Monthly",
-    },
-    "yearly": {
-        "amount": _YEARLY,
-        "display": f"${_YEARLY}",
-        "interval": "per year",
-        "env": "STRIPE_PRICE_YEARLY",
-        "days": 365,
-        "label": "Yearly",
-    },
-}
 
 DOWNLOADS = (
     ("win", "Windows", "KHROMIUM_DOWNLOAD_URL_WIN", "/downloads/khromium-windows"),
@@ -71,9 +75,10 @@ def secret_key() -> str:
 
 
 def price_id(plan: str) -> str:
-    if plan not in PLANS:
-        raise ConfigError("Choose the monthly or yearly plan.")
-    spec = PLANS[plan]
+    catalog = plans()
+    if plan not in catalog:
+        raise ConfigError("Choose the browser purchase or the monthly AI plan.")
+    spec = catalog[plan]
     problems: list[str] = []
     try:
         secret_key()

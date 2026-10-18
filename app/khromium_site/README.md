@@ -1,6 +1,6 @@
 # Khromium download site
 
-Public page for **Khromium Shield**. **Get Khromium** starts a Stripe Checkout subscription. After payment, the success page shows one license key and download links for Windows, macOS, and Linux.
+Public page for **Khromium**. **Get Khromium** starts Stripe Checkout for a one-time browser purchase or a monthly AI plan. After payment, the success page shows one license key and download links for Windows, macOS, and Linux.
 
 This site does not collect card numbers. Checkout is Stripe-hosted. Upstream Chromium in this repo stays under `LICENSE`. This site is Khromium-original work under `LICENSE.khromium`.
 
@@ -29,18 +29,20 @@ The process prints whether each Stripe variable is set. It does not print the va
 
 | Plan | Published price | Stripe env |
 | --- | --- | --- |
-| Monthly | $7.99 | `STRIPE_PRICE_MONTHLY` |
-| Yearly | $69.00 | `STRIPE_PRICE_YEARLY` |
+| Browser, once | $49.00 by default (`KHROMIUM_BROWSER_PRICE_CENTS`) | `STRIPE_PRICE_BROWSER` |
+| Monthly AI | Twice `KHROMIUM_API_COST_CENTS`. Unset default is $5 of API cost, so **$10.00**. | `STRIPE_PRICE_AI_MONTHLY` |
 
-The page shows those amounts even when the price ids are unset. Checkout then returns a configuration error and does not call Stripe.
+The browser purchase includes 30 days of AI ad-block. After that the browser license remains and AI stops. Monthly AI is AI-only, and Khromium holds the provider key. The page shows those amounts even when the price ids are unset. Checkout then returns a configuration error and does not call Stripe.
 
 ## Environment
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `STRIPE_SECRET_KEY` | To charge | Secret key (`sk_test_` / `sk_live_`) or, preferably, a restricted key (`rk_`). Server only. |
-| `STRIPE_PRICE_MONTHLY` | To sell monthly | Stripe Price id (`price_...`) for $7.99 per month. |
-| `STRIPE_PRICE_YEARLY` | To sell yearly | Stripe Price id (`price_...`) for $69.00 per year. |
+| `STRIPE_PRICE_BROWSER` | To sell the browser | One-time Price id (`price_...`) at `KHROMIUM_BROWSER_PRICE_CENTS` (default $49.00). |
+| `STRIPE_PRICE_AI_MONTHLY` | To sell monthly AI | Recurring Price id at twice `KHROMIUM_API_COST_CENTS` (default $10.00). |
+| `KHROMIUM_BROWSER_PRICE_CENTS` | No | Display price for the browser, in cents. Default `4900`. |
+| `KHROMIUM_API_COST_CENTS` | No | Provider cost per subscriber per month, in cents. Default `500` (placeholder). Customer price is double. |
 | `KHROMIUM_SITE_BASE_URL` | Behind a proxy | Public origin, no trailing path. Success and cancel URLs are built from this. Locally it defaults to `http://127.0.0.1:<port>`. |
 | `KHROMIUM_LICENSE_HMAC_SECRET` | Before a real mint | HMAC secret for `KHRO1.` keys. Tests use the development default. |
 | `KHROMIUM_ISSUED_LICENSES_PATH` | No | JSON file of issued keys. Default: `app/khromium_site/data/issued_licenses.json` (gitignored). Same Checkout Session id returns the same key. |
@@ -60,9 +62,9 @@ Keep the issued-license file on disk. If it is deleted, a repeat visit to the sa
 Use a [Stripe sandbox](https://docs.stripe.com/sandboxes.md) for new development so test data stays off the shared test-mode sandbox. A restricted API key is safer than a secret key.
 
 1. Create a restricted key that can write and read Checkout Sessions. Put it in `STRIPE_SECRET_KEY`.
-2. Create one Product named Khromium Shield. Monthly and yearly are two Prices on that same product (two billing intervals, not two tiers).
-3. Add a recurring Price of **$7.99 USD** every month. Copy the `price_` id to `STRIPE_PRICE_MONTHLY`.
-4. Add a recurring Price of **$69.00 USD** every year. Copy the `price_` id to `STRIPE_PRICE_YEARLY`.
+2. Create a Product for the Khromium browser and a one-time Price at the browser amount (default **$49.00**). Copy the `price_` id to `STRIPE_PRICE_BROWSER`.
+3. Create a Product for monthly AI and a recurring Price at **twice** `KHROMIUM_API_COST_CENTS` (default **$10.00** per month). Copy the `price_` id to `STRIPE_PRICE_AI_MONTHLY`.
+4. Set `KHROMIUM_API_COST_CENTS` to the real provider cost before charging. The $5 default is a placeholder.
 5. Leave payment methods on dynamic Checkout. Do not send `payment_method_types`.
 6. Set `KHROMIUM_SITE_BASE_URL` to the origin buyers use. Cancel returns to that origin. Success is `{origin}/success?session_id={CHECKOUT_SESSION_ID}`.
 7. For local webhook forwarding:
@@ -78,9 +80,7 @@ Put the CLI signing secret in `STRIPE_WEBHOOK_SECRET`. In the Dashboard, point a
 
 Both events, and the success page, call one issuance function. A paid session (or a subscription that is `active` or `trialing`) is stored under its session id. A second call returns the stored key and does not mint another.
 
-The paid term is 31 days monthly and 365 days yearly. The buyer puts the key in `<user-data-dir>/khromium/license.key` or `KHROMIUM_LICENSE_KEY`.
-
-`mint()` is used as-is. When that helper's plans are `monthly` and `yearly`, the token uses those names. When it only accepts `ai_monthly`, the site mints an `ai_monthly` token for the same number of days so `verify()` accepts it and Shield's AI entitlement matches the term. That token does not set the separate browser-purchase entitlement.
+A paid browser session mints plan `browser`: the browser entitlement lasts about 100 years and `ai_until` is 30 days out. A paid monthly session mints plan `ai_monthly` for 31 days and does not entitle the browser. The buyer puts the key in `<user-data-dir>/khromium/license.key` or `KHROMIUM_LICENSE_KEY`.
 
 This site does not yet act on renewal, cancellation, refund, dispute, or early-fraud events. Before treating the subscription integration as production-complete, handle `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted`, `charge.dispute.created`, `charge.refunded`, and `radar.early_fraud_warning.created`. Local HMAC keys are not revoked from here. Set `KHROMIUM_LICENSE_SERVER` when a failed or inactive answer must turn Shield off. The [Customer Portal](https://docs.stripe.com/customer-management/integrate-customer-portal.md) is the usual place for buyers to cancel or replace a card.
 

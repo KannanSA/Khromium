@@ -13,7 +13,7 @@ from pathlib import Path
 
 from khromium_classifier import license_key
 
-from khromium_site.config import PLANS
+from khromium_site.config import plans
 
 SESSION_RE = re.compile(r"^cs_[A-Za-z0-9_]{10,200}$")
 _PAYABLE_SUBSCRIPTION = {"active", "trialing"}
@@ -105,21 +105,17 @@ class _FileLock:
         return False
 
 
-def mint_checkout_plan(plan: str, subject: str, days: int, now: int) -> str:
-    """Mint with the classifier helper.
+def mint_checkout_plan(plan: str, subject: str, now: int) -> str:
+    """Mint a browser purchase or a monthly AI token.
 
-    Monthly and yearly are the checkout plans. When the helper only accepts
-    ``ai_monthly``, that token is used for the same number of paid days so
-    ``verify()`` still accepts the key and Shield's AI entitlement matches
-    the term. It does not grant the separate browser-purchase entitlement.
+    ``browser`` keeps the browser for about 100 years and sets ``ai_until``
+    30 days out. ``ai_monthly`` is AI-only for one month. Days are not
+    overridden here so those rules stay in the license helper.
     """
 
-    known = set(license_key.PLANS)
-    if plan in known:
-        return license_key.mint(plan, subject, days=days, now=now)
-    if "ai_monthly" in known:
-        return license_key.mint("ai_monthly", subject, days=days, now=now)
-    raise IssuanceError("The license helper cannot mint this plan.")
+    if plan not in license_key.PLANS:
+        raise IssuanceError("The license helper cannot mint this plan.")
+    return license_key.mint(plan, subject, now=now)
 
 
 def default_licenses_path() -> Path:
@@ -155,8 +151,8 @@ def customer_email(session: dict) -> str:
 def session_plan(session: dict) -> str:
     metadata = session.get("metadata") if isinstance(session.get("metadata"), dict) else {}
     plan = str(metadata.get("plan") or "").strip().lower()
-    if plan not in PLANS:
-        raise IssuanceError("Stripe did not return a monthly or yearly plan on this session.")
+    if plan not in plans():
+        raise IssuanceError("Stripe did not return a browser or monthly AI plan on this session.")
     return plan
 
 
@@ -180,7 +176,7 @@ def issue_from_session(session: dict, store: LicenseStore, now: float | None = N
             raise IssuanceError("missing email")
         plan = session_plan(session)
         issued_at = int(now if now is not None else time.time())
-        token = mint_checkout_plan(plan, email, PLANS[plan]["days"], issued_at)
+        token = mint_checkout_plan(plan, email, issued_at)
         return {
             "key": token,
             "email": email,
