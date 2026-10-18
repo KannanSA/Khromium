@@ -43,7 +43,9 @@ class ServerTests(unittest.TestCase):
     def test_classify_returns_schema(self):
         status, body = self._request("/api/status")
         self.assertEqual(status, 200)
-        self.assertFalse(body["closed_source"])
+        self.assertTrue(body["closed_source"])
+        self.assertEqual(body["ai_monthly_cents"], 2 * body["api_cost_cents"])
+        self.assertIn("browser_price_cents", body)
 
         status, body = self._request("/api/classify", {"html": HTML})
         self.assertEqual(status, 200)
@@ -57,6 +59,14 @@ class ServerTests(unittest.TestCase):
         status, body = self._request("/api/classify", {"html": "   "})
         self.assertEqual(status, 400)
         self.assertEqual(body["error"], "html is required")
+
+    def test_proxy_rejects_missing_license(self):
+        status, body = self._request(
+            "/v1/chat/completions",
+            {"messages": [{"role": "user", "content": "hi"}]},
+        )
+        self.assertEqual(status, 402)
+        self.assertEqual(body["error"]["type"], "khromium_entitlement")
 
     def test_ui_is_served(self):
         request = urllib.request.Request(f"http://127.0.0.1:{self.port}/")

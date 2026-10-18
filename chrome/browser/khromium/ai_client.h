@@ -35,8 +35,9 @@ class AiClient {
   void set_config(AiConfig config) { config_ = std::move(config); }
   const AiConfig& config() const { return config_; }
 
-  // `snippet` is the trimmed DOM context. The API key is attached as a
-  // request header and is not written to logs.
+  // `snippet` is the trimmed DOM context. The paid path sends the license
+  // token in X-Khromium-License and does not send a provider API key.
+  // Nothing from the request headers is written to logs.
   void Classify(std::string snippet, Callback callback);
 
  private:

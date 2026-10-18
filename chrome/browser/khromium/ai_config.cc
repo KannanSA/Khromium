@@ -15,6 +15,7 @@ namespace {
 
 constexpr char kOpenAiEndpoint[] = "https://api.openai.com/v1/chat/completions";
 constexpr char kGrokEndpoint[] = "https://api.x.ai/v1/chat/completions";
+constexpr char kDefaultProxy[] = "http://127.0.0.1:8766/v1/chat/completions";
 constexpr char kOpenAiModel[] = "gpt-4o-mini";
 constexpr char kGrokModel[] = "grok-3-mini";
 
@@ -27,11 +28,17 @@ std::optional<std::string> EnvVar(const char* name) {
   return value;
 }
 
+bool AllowByoKey() {
+  std::optional<std::string> value = EnvVar("KHROMIUM_ALLOW_BYO_KEY");
+  return value && *value == "1";
+}
+
 }  // namespace
 
 AiConfig LoadAiConfig(const base::FilePath& config_path,
                       const std::string& provider_pref) {
   AiConfig config;
+  config.use_proxy = !AllowByoKey();
   std::string provider = base::ToLowerASCII(provider_pref);
 
   std::string raw;
@@ -54,23 +61,35 @@ AiConfig LoadAiConfig(const base::FilePath& config_path,
                                               : AiProvider::kOpenAi;
   if (config.provider == AiProvider::kGrok) {
     config.model = kGrokModel;
-    config.endpoint = kGrokEndpoint;
   } else {
     config.model = kOpenAiModel;
-    config.endpoint = kOpenAiEndpoint;
   }
   if (const std::string* model = file.FindString("model");
       model && !model->empty()) {
     config.model = *model;
   }
 
+  if (config.use_proxy) {
+    // Paid path. Do not load KHROMIUM_OPENAI_API_KEY, KHROMIUM_XAI_API_KEY,
+    // or keys from the config file. The proxy holds the provider key.
+    config.api_key.clear();
+    if (std::optional<std::string> proxy = EnvVar("KHROMIUM_AI_PROXY_URL")) {
+      config.endpoint = *proxy;
+    } else {
+      config.endpoint = kDefaultProxy;
+    }
+    return config;
+  }
+
   if (config.provider == AiProvider::kGrok) {
+    config.endpoint = kGrokEndpoint;
     if (std::optional<std::string> env = EnvVar("KHROMIUM_XAI_API_KEY")) {
       config.api_key = *env;
     } else if (const std::string* key = file.FindString("xai_api_key")) {
       config.api_key = *key;
     }
   } else {
+    config.endpoint = kOpenAiEndpoint;
     if (std::optional<std::string> env = EnvVar("KHROMIUM_OPENAI_API_KEY")) {
       config.api_key = *env;
     } else if (const std::string* key = file.FindString("openai_api_key")) {

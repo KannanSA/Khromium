@@ -41,7 +41,8 @@ class AiClient;
 // Browser-process owner of the paid license, the per-domain cache, and the
 // async model client. Bound to renderers through KhromiumAgent. All methods
 // run on the UI thread. Disk IO and HTTP are posted off the UI thread and
-// never block it. The model API key and the license key stay in this process.
+// never block it. The license key stays in this process. The provider API
+// key stays on the Khromium proxy unless KHROMIUM_ALLOW_BYO_KEY=1.
 class KhromiumService : public KeyedService, public mojom::KhromiumAgent {
  public:
   explicit KhromiumService(content::BrowserContext* context);
@@ -60,9 +61,16 @@ class KhromiumService : public KeyedService, public mojom::KhromiumAgent {
   // registrable domain includes it. Does not cancel the load.
   void NoteSuspiciousScript(const GURL& page, const GURL& script);
 
-  // True only after startup has finished, the feature is on, and a paid key
-  // has been accepted. False while the check is still in flight.
+  // True only when startup has finished, the feature is on, and AI
+  // protection is still inside `ai_until` (trial or monthly plan). False
+  // while the check is in flight, and false after the trial ends even if
+  // the browser purchase is still valid. The renderer uses this to decide
+  // whether it may copy DOM.
   bool IsEntitled() const;
+
+  // True when a browser purchase is still inside `exp`. This stays true
+  // after the included AI trial ends. A monthly AI plan does not set it.
+  bool IsBrowserLicensed() const;
 
   base::WeakPtr<KhromiumService> GetWeakPtr();
 
@@ -127,7 +135,8 @@ class KhromiumService : public KeyedService, public mojom::KhromiumAgent {
   std::unique_ptr<network::SimpleURLLoader> license_loader_;
 
   bool ready_ = false;
-  bool entitled_ = false;
+  bool entitled_browser_ = false;
+  bool entitled_ai_ = false;
   std::vector<IsEntitledCallback> entitled_waiters_;
   std::vector<QueuedAnalyze> queued_;
   std::map<std::string, std::vector<AnalyzeCallback>> inflight_;

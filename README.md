@@ -2,15 +2,16 @@
 
 Khromium is a Chromium fork with **Khromium Shield**, a paid, closed-source classifier for anti-adblock walls and obfuscated ad containers. The rest of this tree is still upstream Chromium under the BSD license in `LICENSE`. Shield's own code is under `LICENSE.khromium` and is not open source.
 
-Shield calls either the OpenAI API or xAI's Grok API (both OpenAI-compatible chat completions). The provider is switchable. A subscription is required; the feature flag alone does not unlock it.
+Two paid offers: a one-time browser purchase (default **$49**, includes 30 days of AI) and a monthly AI plan priced at twice the configured API cost (default placeholder **$10/month**, which is 2 × $5). Khromium holds the OpenAI or xAI key on its proxy. Customers do not paste a provider key. The feature flag alone does not unlock AI.
 
 ```mermaid
 flowchart LR
   page[Web page] --> detector[Renderer detector]
   detector --> browser[Browser service]
-  browser --> license[Paid license]
+  browser --> license[Browser purchase and AI term]
   browser --> cache[Domain cache]
-  browser --> api[OpenAI or Grok]
+  browser --> proxy[Khromium proxy]
+  proxy --> api[OpenAI or Grok]
   browser --> detector
   detector --> page
 ```
@@ -20,7 +21,7 @@ flowchart LR
 - [Architecture and limitations](docs/khromium/architecture.md)
 - [Environment setup and rebase workflow](docs/khromium/environment-setup.md)
 - [Chromium files to add or modify](docs/khromium/hooks.md)
-- [Subscription, prices, and license keys](docs/khromium/commercial.md)
+- [Browser purchase, monthly AI, and license keys](docs/khromium/commercial.md)
 - [Companion app](app/khromium_classifier/README.md)
 
 ## Apply and compile
@@ -46,6 +47,14 @@ Run the paid companion without compiling Chromium:
 cd app/khromium_classifier
 python3 -m unittest discover -s tests -v
 python3 -m khromium_classifier serve --port 8765
+```
+
+The download page takes payment with Stripe Checkout, then shows the license key:
+
+```bash
+cd app/khromium_site
+python3 -m unittest discover -s tests -v
+python3 -m khromium_site --port 8787
 ```
 
 ## Limitations

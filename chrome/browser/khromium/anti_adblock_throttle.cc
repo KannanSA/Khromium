@@ -29,8 +29,8 @@ std::unique_ptr<AntiAdblockThrottle> AntiAdblockThrottle::MaybeCreate(
   }
   KhromiumService* service =
       KhromiumServiceFactory::GetForBrowserContext(profile);
-  // Paid gate. The throttle is created per request, so this becomes true
-  // after the license file has been checked.
+  // AI gate. A browser purchase whose trial has ended does not record
+  // scripts. The throttle is created per request, so this follows ai_until.
   if (!service || !service->IsEntitled()) {
     return nullptr;
   }

@@ -57,7 +57,17 @@ std::optional<std::vector<uint8_t>> DecodeUrl(std::string_view in) {
 }
 
 bool KnownPlan(std::string_view plan) {
-  return plan == "monthly" || plan == "yearly" || plan == "lifetime";
+  return plan == "browser" || plan == "ai_monthly";
+}
+
+std::optional<int64_t> FindUnix(const base::DictValue& dict,
+                                std::string_view key) {
+  // FindDouble accepts both JSON ints and doubles.
+  const std::optional<double> value = dict.FindDouble(key);
+  if (!value) {
+    return std::nullopt;
+  }
+  return static_cast<int64_t>(*value);
 }
 
 }  // namespace
@@ -97,19 +107,36 @@ LicenseStatus VerifyLicenseToken(std::string_view token, int64_t now_unix) {
     return status;
   }
   const std::string* plan = dict->FindString("plan");
-  const std::optional<double> exp = dict->FindDouble("exp");
-  if (!plan || !KnownPlan(*plan) || !exp) {
+  const std::optional<int64_t> exp = FindUnix(*dict, "exp");
+  const std::optional<int64_t> ai_until = FindUnix(*dict, "ai_until");
+  const std::optional<double> version = dict->FindDouble("v");
+  if (!plan || !KnownPlan(*plan) || !exp || *exp <= 0 || !version ||
+      static_cast<int64_t>(*version) != 1) {
     status.detail = "license payload is invalid";
     return status;
   }
   status.plan = *plan;
-  status.expires_unix = static_cast<int64_t>(*exp);
-  if (status.expires_unix <= now_unix) {
-    status.detail = "license has expired";
-    return status;
+  status.expires_unix = *exp;
+  status.ai_until_unix = ai_until.value_or(0);
+  const bool browser_plan = *plan == "browser";
+  const bool ai_plan = *plan == "ai_monthly";
+  // Monthly AI does not keep browser rights after the month, and does not
+  // grant them during the month either. The browser purchase is the plan
+  // that keeps entitled_browser after the AI trial ends.
+  status.entitled_browser = browser_plan && status.expires_unix > now_unix;
+  status.entitled_ai =
+      (browser_plan || ai_plan) && status.ai_until_unix > now_unix;
+  if (status.entitled_browser && status.entitled_ai) {
+    status.detail = "browser license active; AI trial active";
+  } else if (status.entitled_browser) {
+    status.detail = "browser license active; AI protection has ended";
+  } else if (status.entitled_ai) {
+    status.detail = "monthly AI plan active";
+  } else if (ai_plan) {
+    status.detail = "monthly AI plan has expired";
+  } else {
+    status.detail = "browser license has expired";
   }
-  status.entitled = true;
-  status.detail = "paid subscription active";
   return status;
 }
 

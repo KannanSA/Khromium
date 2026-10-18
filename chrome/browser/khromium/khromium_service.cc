@@ -163,7 +163,12 @@ void KhromiumService::Shutdown() {
 
 bool KhromiumService::IsEntitled() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return ready_ && entitled_ && ShieldEnabled();
+  return ready_ && entitled_ai_ && ShieldEnabled();
+}
+
+bool KhromiumService::IsBrowserLicensed() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return ready_ && entitled_browser_;
 }
 
 base::WeakPtr<KhromiumService> KhromiumService::GetWeakPtr() {
@@ -198,6 +203,9 @@ std::string KhromiumService::RegistrableDomain(const GURL& url) const {
 void KhromiumService::NoteSuspiciousScript(const GURL& page,
                                            const GURL& script) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (ready_ && !entitled_ai_) {
+    return;
+  }
   if (!page.SchemeIsHTTPOrHTTPS() || !script.is_valid()) {
     return;
   }
@@ -229,13 +237,15 @@ void KhromiumService::StartDiskLoad() {
 void KhromiumService::OnDisk(DiskState state) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   cache_.LoadFromJson(state.cache_json, base::Time::Now(), CacheTtl());
+  state.config.license_key = state.license_key;
   if (client_) {
     client_->set_config(std::move(state.config));
   }
   const std::string key = std::move(state.license_key);
   const std::string server = std::move(state.license_server);
   if (key.empty()) {
-    entitled_ = false;
+    entitled_browser_ = false;
+    entitled_ai_ = false;
     FinishStartup();
     return;
   }
@@ -245,7 +255,8 @@ void KhromiumService::OnDisk(DiskState state) {
   }
   const LicenseStatus status =
       VerifyLicenseToken(key, base::Time::Now().ToTimeT());
-  entitled_ = status.entitled;
+  entitled_browser_ = status.entitled_browser;
+  entitled_ai_ = status.entitled_ai;
   FinishStartup();
 }
 
@@ -258,7 +269,8 @@ void KhromiumService::StartOnlineLicenseCheck(const std::string& server,
       context_->GetDefaultStoragePartition()
           ->GetURLLoaderFactoryForBrowserProcess();
   if (!body || !factory) {
-    entitled_ = false;
+    entitled_browser_ = false;
+    entitled_ai_ = false;
     FinishStartup();
     return;
   }
@@ -288,15 +300,42 @@ void KhromiumService::OnLicenseResponse(std::optional<std::string> body) {
   }
   const int net_error = license_loader_ ? license_loader_->NetError() : -1;
   license_loader_.reset();
-  entitled_ = false;
+  entitled_browser_ = false;
+  entitled_ai_ = false;
   if (net_error == 0 && response_code >= 200 && response_code < 300 && body) {
     if (std::optional<base::DictValue> dict =
             base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)) {
-      const std::optional<bool> active = dict->FindBool("active");
+      const int64_t now = base::Time::Now().ToTimeT();
+      const std::string* plan = dict->FindString("plan");
       const std::optional<double> exp = dict->FindDouble("exp");
-      if (active && *active && exp &&
-          static_cast<int64_t>(*exp) > base::Time::Now().ToTimeT()) {
-        entitled_ = true;
+      const std::optional<double> ai_until = dict->FindDouble("ai_until");
+      const std::optional<bool> browser_flag =
+          dict->FindBool("entitled_browser");
+      const std::optional<bool> ai_flag = dict->FindBool("entitled_ai");
+      const std::optional<bool> active = dict->FindBool("active");
+      const int64_t exp_unix = exp ? static_cast<int64_t>(*exp) : 0;
+      const int64_t ai_unix = ai_until ? static_cast<int64_t>(*ai_until) : 0;
+      if (browser_flag.has_value()) {
+        entitled_browser_ = *browser_flag;
+      } else if (active.value_or(false) && plan && *plan == "browser" &&
+                 exp_unix > now) {
+        entitled_browser_ = true;
+      }
+      if (ai_flag.has_value()) {
+        entitled_ai_ = *ai_flag;
+      } else if (active.value_or(false) && ai_unix > now) {
+        entitled_ai_ = true;
+      }
+      // A timestamp in the past wins over a stale boolean. An ended trial
+      // must not be treated as an ended browser purchase.
+      if (ai_until.has_value() && ai_unix <= now) {
+        entitled_ai_ = false;
+      }
+      if (plan && *plan == "ai_monthly") {
+        entitled_browser_ = false;
+      }
+      if (plan && *plan == "browser" && exp.has_value() && exp_unix <= now) {
+        entitled_browser_ = false;
       }
     }
   }
@@ -313,7 +352,7 @@ void KhromiumService::FlushQueued() {
   std::vector<IsEntitledCallback> waiters;
   waiters.swap(entitled_waiters_);
   for (auto& waiter : waiters) {
-    std::move(waiter).Run(entitled_ && ShieldEnabled());
+    std::move(waiter).Run(entitled_ai_ && ShieldEnabled());
   }
   std::vector<QueuedAnalyze> queued;
   queued.swap(queued_);
@@ -359,7 +398,7 @@ void KhromiumService::IsEntitled(IsEntitledCallback callback) {
     entitled_waiters_.push_back(std::move(callback));
     return;
   }
-  std::move(callback).Run(entitled_);
+  std::move(callback).Run(entitled_ai_);
 }
 
 void KhromiumService::Analyze(const std::string& trimmed_snippet,
@@ -389,9 +428,12 @@ void KhromiumService::Dispatch(PageCapture page,
                                std::string snippet,
                                AnalyzeCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!entitled_) {
-    std::move(callback).Run(MakeDecision(
-        false, {}, false, "Khromium Shield subscription required", false));
+  if (!entitled_ai_) {
+    const char* reason =
+        entitled_browser_
+            ? "AI protection has ended. The browser purchase is still valid."
+            : "Khromium AI protection requires an active trial or monthly plan";
+    std::move(callback).Run(MakeDecision(false, {}, false, reason, false));
     return;
   }
   if (!page.url.SchemeIsHTTPOrHTTPS() || page.domain.empty()) {
@@ -434,9 +476,10 @@ void KhromiumService::Dispatch(PageCapture page,
     return;
   }
   inflight_[page.domain].push_back(std::move(callback));
-  if (!client_ || !client_->config().has_key()) {
-    // Do not cache a missing key: the user may add one without deleting the
-    // domain cache. Also never log the key or the config path contents.
+  if (!client_ || !client_->config().can_call()) {
+    // Do not cache a missing license (or a missing dev key). The profile may
+    // gain one without deleting the domain cache. Never log the license or a
+    // provider key.
     OnClassified(page.domain, /*cache_negative_on_failure=*/false,
                  std::nullopt);
     return;

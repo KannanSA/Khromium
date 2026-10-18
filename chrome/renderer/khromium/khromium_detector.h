@@ -13,8 +13,9 @@
 
 namespace khromium {
 
-// Renderer hook. Asks the browser whether the feature is enabled before
-// reading the DOM. The model API key never enters this process.
+// Renderer hook. Asks the browser whether AI protection is active before
+// reading the DOM. An ended trial stops the scan. The provider API key
+// never enters this process.
 class KhromiumDetector : public content::RenderFrameObserver {
  public:
   explicit KhromiumDetector(content::RenderFrame* render_frame);

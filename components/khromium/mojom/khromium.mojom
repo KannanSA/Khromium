@@ -14,9 +14,11 @@ struct AnalysisDecision {
 };
 
 // Browser-process agent. The API key never crosses this interface.
-// IsEntitled reports whether the feature flag and profile pref allow a scan.
-// Analyze sends a trimmed DOM snippet. The browser uses the frame's committed
-// URL, not anything inside the snippet, as the cache key.
+// IsEntitled reports whether AI protection is active (trial or monthly plan).
+// A browser purchase with an ended trial is not entitled here, so the
+// renderer does not send DOM. Analyze sends a trimmed DOM snippet. The
+// browser uses the frame's committed URL, not anything inside the snippet,
+// as the cache key. The provider API key never crosses this interface.
 interface KhromiumAgent {
   IsEntitled() => (bool entitled);
 

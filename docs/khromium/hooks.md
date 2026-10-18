@@ -32,15 +32,15 @@ Anti-adblock walls are page DOM: `position: fixed`, a high `z-index`, `overflow:
 
 `KhromiumDetector` runs in the renderer after `DidFinishLoad`, in the existing Chrome isolated world (`ISOLATED_WORLD_ID_CHROME_INTERNAL`), using `WebLocalFrame::RequestExecuteScript`. The script is the practical equivalent of a short MutationObserver: it scans once, and C++ schedules one more pass two seconds later for overlays inserted after load. It does not stay attached for the life of the document.
 
-The detector calls `IsEntitled()` before the scan. Unpaid profiles never copy DOM into the browser process.
+The detector calls `IsEntitled()` before the scan. That is AI entitlement, not the lasting browser purchase. Profiles whose trial or monthly plan has ended never copy DOM into the browser process.
 
 **Browser process for the model, not the renderer.**
 
-`network::SimpleURLLoader` with the profile `SharedURLLoaderFactory` runs on the UI thread and completes through a callback. The UI thread is not blocked. The API key is read from `KHROMIUM_OPENAI_API_KEY`, `KHROMIUM_XAI_API_KEY`, or `<user-data-dir>/khromium/ai_config.json`. It is placed on the `Authorization` header inside the browser process. It is not logged and it is not part of the Mojo struct.
+`network::SimpleURLLoader` with the profile `SharedURLLoaderFactory` runs on the UI thread and completes through a callback. The UI thread is not blocked. The paid path posts to `KHROMIUM_AI_PROXY_URL` and sends the license in `X-Khromium-License`. It does not send the provider API key. The key stays on the proxy (`KHROMIUM_OPENAI_API_KEY` or `KHROMIUM_XAI_API_KEY` in that process only). It is not logged and it is not part of the Mojo struct. `KHROMIUM_ALLOW_BYO_KEY=1` is a dev-only direct call.
 
 **Network: browser-side `URLLoaderThrottle`, not `subresource_filter`.**
 
-Known anti-adblock libraries (`fuckadblock`, `blockadblock`, and the other markers in `components/khromium/script_patterns.h`) are visible from the script URL. `ChromeContentBrowserClient::CreateURLLoaderThrottles` is the right hook because the throttle can see the paid license. A renderer throttle would have to be told the license separately.
+Known anti-adblock libraries (`fuckadblock`, `blockadblock`, and the other markers in `components/khromium/script_patterns.h`) are visible from the script URL. `ChromeContentBrowserClient::CreateURLLoaderThrottles` is the right hook because the throttle can see AI entitlement. A renderer throttle would have to be told the license separately. The throttle is not created after the trial or monthly plan ends.
 
 The throttle does **not** cancel the script. Cancelling it is a signal many anti-adblock kits already look for. It records the URL on `KhromiumService` so the next model snippet for that domain includes it. Hiding the wall stays a DOM action.
 

@@ -33,8 +33,9 @@ net::NetworkTrafficAnnotationTag KhromiumTrafficAnnotation() {
         "in the per-domain cache."
       data:
         "Registrable-domain context is implied by the snippet. The snippet "
-        "may contain visible text and selectors from the page. The API key "
-        "is sent as an Authorization header. Cookies are not sent."
+        "may contain visible text and selectors from the page. The paid path "
+        "sends the license token in X-Khromium-License to the Khromium proxy. "
+        "The provider API key stays on that server. Cookies are not sent."
       destination: WEBSITE
       internal {
         contacts {
@@ -99,7 +100,7 @@ void AiClient::StartNext() {
   if (queue_.empty() || !factory_) {
     return;
   }
-  if (!config_.has_key() || config_.endpoint.empty()) {
+  if (!config_.can_call()) {
     Job job = std::move(queue_.front());
     queue_.pop_front();
     std::move(job.callback).Run(std::nullopt);
@@ -122,8 +123,13 @@ void AiClient::StartNext() {
   request->url = GURL(config_.endpoint);
   request->method = "POST";
   request->credentials_mode = network::mojom::CredentialsMode::kOmit;
-  // The key stays in the header. Do not log `request->headers`.
-  request->headers.SetHeader("Authorization", "Bearer " + config_.api_key);
+  // Do not log `request->headers`. The paid path sends the license only.
+  // A provider API key is attached only for KHROMIUM_ALLOW_BYO_KEY=1.
+  if (config_.use_proxy) {
+    request->headers.SetHeader("X-Khromium-License", config_.license_key);
+  } else {
+    request->headers.SetHeader("Authorization", "Bearer " + config_.api_key);
+  }
   request->headers.SetHeader("Content-Type", "application/json");
 
   loader_ = network::SimpleURLLoader::Create(std::move(request),

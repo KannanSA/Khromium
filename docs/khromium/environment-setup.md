@@ -83,7 +83,7 @@ On Windows the executable is `out\Default\chrome.exe`. On Linux and macOS it is 
 
 ## 6. Turn the paid feature on
 
-The feature flag ships **off**. A license is also required.
+The feature flag ships **off**. AI protection also requires a license whose `ai_until` is still in the future. A browser purchase stays valid after that date, but the model client, DOM send, and script throttle stop.
 
 ```bash
 out/Default/chrome \
@@ -91,21 +91,40 @@ out/Default/chrome \
   --user-data-dir=/tmp/khromium-profile
 ```
 
-Then install a paid key:
+Install the license Khromium issued (Checkout or `python3 -m khromium_classifier mint`):
 
 - environment variable `KHROMIUM_LICENSE_KEY`, or
 - `/tmp/khromium-profile/khromium/license.key`
 
-Model credentials, also never logged and never sent to renderers:
+The paid path does **not** read a provider key from the user. The browser posts to the Khromium proxy and sends the license in `X-Khromium-License`.
 
-- `KHROMIUM_OPENAI_API_KEY` or `KHROMIUM_XAI_API_KEY`
-- optional `<user-data-dir>/khromium/ai_config.json` with `{"provider":"openai"}` or `{"provider":"grok"}`
+```bash
+# Companion proxy. Default browser URL is this port.
+python3 -m khromium_classifier serve --port 8766
+```
+
+Server-only provider key (never put this in the browser profile, never commit it):
+
+- `KHROMIUM_OPENAI_API_KEY` or `KHROMIUM_XAI_API_KEY` on the proxy process
+- `KHROMIUM_AI_PROVIDER` = `openai` (default) or `grok`
+- optional `KHROMIUM_AI_PROXY_URL` if the proxy is not `http://127.0.0.1:8766/v1/chat/completions`
+
+Prices, both overridable:
+
+- `KHROMIUM_BROWSER_PRICE_CENTS` — one-time browser price, default `4900` ($49.00)
+- `KHROMIUM_API_COST_CENTS` — provider cost per subscriber per month, default `500`. The customer monthly price is twice that ($10.00 at the default). The default is a placeholder; set the real cost before charging.
+
+`KHROMIUM_ALLOW_BYO_KEY=1` is dev-only and off by default. It calls OpenAI or xAI directly with a key on that machine. Customers do not use it.
+
+Optional `<user-data-dir>/khromium/ai_config.json` may set `{"provider":"openai"}` or `{"provider":"grok"}` and a model name. On the paid path, `openai_api_key` and `xai_api_key` in that file are ignored.
 
 Optional license server (fail closed, no local HMAC fallback):
 
 ```bash
 export KHROMIUM_LICENSE_SERVER="https://license.example.com/v1/licenses/verify"
 ```
+
+The response should include `entitled_browser`, `entitled_ai`, `plan`, `exp`, and `ai_until`. See [commercial.md](commercial.md).
 
 ## 7. Keep the fork as a patch set
 
