@@ -13,6 +13,7 @@
 #include "chrome/browser/chrome_browser_interface_binders.h"
 #include "chrome/browser/chrome_browser_interface_binders_webui.h"
 #include "chrome/browser/chrome_content_browser_client.h"
+#include "chrome/browser/khromium/khromium_service.h"
 #include "chrome/browser/chrome_content_browser_client_parts.h"
 #include "chrome/browser/content_settings/content_settings_manager_delegate.h"
 #include "chrome/browser/facilitated_payments/facilitated_payments_driver_binder.h"
@@ -350,6 +351,7 @@ void ChromeContentBrowserClient::RegisterBrowserInterfaceBindersForFrame(
     mojo::BinderMapWithContext<content::RenderFrameHost*>* map) {
   chrome::internal::PopulateChromeFrameBinders(map, render_frame_host);
   chrome::internal::PopulateChromeWebUIFrameBinders(map, render_frame_host);
+  map->Add<khromium::mojom::KhromiumAgent>(&khromium::KhromiumService::BindFrameAgent);
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   if (!render_frame_host->GetSiteInstance()->GetSecurityPrincipal().SchemeIs(

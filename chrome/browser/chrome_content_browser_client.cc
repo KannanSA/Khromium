@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/chrome_content_browser_client.h"
+#include "chrome/browser/khromium/anti_adblock_throttle.h"
 
 #include <algorithm>
 #include <iterator>
@@ -6326,6 +6327,15 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
   if (auto glic_throttle = glic::GlicURLLoaderThrottle::MaybeCreate(
           profile, wc_getter, frame_tree_node_id, request)) {
     result.push_back(std::move(glic_throttle));
+  }
+
+  GURL khromium_page;
+  if (content::WebContents* khromium_contents = wc_getter.Run()) {
+    khromium_page = khromium_contents->GetLastCommittedURL();
+  }
+  if (auto khromium_throttle = khromium::AntiAdblockThrottle::MaybeCreate(
+          profile, khromium_page)) {
+    result.push_back(std::move(khromium_throttle));
   }
 
   return result;

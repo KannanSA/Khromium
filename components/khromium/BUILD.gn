@@ -1,0 +1,29 @@
+# Copyright 2026 Khromium. All rights reserved.
+# Proprietary commercial software. See //LICENSE.khromium.
+# Not covered by the Chromium BSD license.
+
+import("//mojo/public/tools/bindings/mojom.gni")
+
+mojom("mojom") {
+  sources = [ "mojom/khromium.mojom" ]
+}
+
+source_set("khromium") {
+  sources = [
+    "decision.cc",
+    "decision.h",
+    "features.cc",
+    "features.h",
+    "license_token.cc",
+    "license_token.h",
+    "script_patterns.h",
+    "system_prompt.cc",
+    "system_prompt.h",
+  ]
+
+  deps = [
+    ":mojom",
+    "//base",
+    "//crypto",
+  ]
+}

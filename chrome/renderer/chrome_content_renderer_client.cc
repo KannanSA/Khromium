@@ -56,6 +56,7 @@
 #include "chrome/renderer/browser_exposed_renderer_interfaces.h"
 #include "chrome/renderer/chrome_content_settings_agent_delegate.h"
 #include "chrome/renderer/chrome_render_frame_observer.h"
+#include "chrome/renderer/khromium/khromium_detector.h"
 #include "chrome/renderer/chrome_render_thread_observer.h"
 #include "chrome/renderer/controlled_frame/controlled_frame_extensions_renderer_api_provider.h"
 #include "chrome/renderer/google_accounts_private_api_extension.h"
@@ -654,6 +655,9 @@ void ChromeContentRendererClient::RenderFrameCreated(
     content::RenderFrame* render_frame) {
   ChromeRenderFrameObserver* render_frame_observer =
       new ChromeRenderFrameObserver(render_frame, web_cache_impl_.get());
+  if (render_frame->IsMainFrame()) {
+    new khromium::KhromiumDetector(render_frame);
+  }
   service_manager::BinderRegistry* registry = render_frame_observer->registry();
 
   new prerender::NoStatePrefetchRenderFrameObserver(render_frame);

@@ -1,0 +1,35 @@
+# Copyright 2026 Khromium. All rights reserved.
+# Proprietary commercial software. See //LICENSE.khromium.
+
+source_set("khromium") {
+  sources = [
+    "ai_client.cc",
+    "ai_client.h",
+    "ai_config.cc",
+    "ai_config.h",
+    "analysis_cache.cc",
+    "analysis_cache.h",
+    "anti_adblock_throttle.cc",
+    "anti_adblock_throttle.h",
+    "khromium_service.cc",
+    "khromium_service.h",
+    "khromium_service_factory.cc",
+    "khromium_service_factory.h",
+  ]
+
+  public_deps = [ "//components/khromium:mojom" ]
+
+  deps = [
+    "//base",
+    "//chrome/browser/profiles:profile",
+    "//components/keyed_service/content",
+    "//components/keyed_service/core",
+    "//components/khromium",
+    "//components/prefs",
+    "//content/public/browser",
+    "//net",
+    "//services/network/public/cpp",
+    "//services/network/public/mojom",
+    "//url",
+  ]
+}

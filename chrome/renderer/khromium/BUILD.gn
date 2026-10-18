@@ -1,0 +1,23 @@
+# Copyright 2026 Khromium. All rights reserved.
+# Proprietary commercial software. See //LICENSE.khromium.
+
+source_set("khromium") {
+  sources = [
+    "khromium_detector.cc",
+    "khromium_detector.h",
+    "page_script.cc",
+    "page_script.h",
+  ]
+
+  public_deps = [ "//components/khromium:mojom" ]
+
+  deps = [
+    "//base",
+    "//chrome/common",
+    "//components/khromium",
+    "//content/public/renderer",
+    "//third_party/blink/public:blink",
+    "//url",
+    "//v8",
+  ]
+}

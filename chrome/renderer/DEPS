@@ -15,6 +15,7 @@ include_rules = [
   "+components/commerce/core/heuristics/commerce_heuristics_provider.h",
   "+components/commerce/core/commerce_feature_list.h",
   "+components/content_capture/common",
+  "+components/khromium",
   "+components/content_capture/renderer",
   "+components/content_settings/core/common",
   "+components/content_settings/renderer",
