@@ -47,7 +47,7 @@ INTEGRATION_IDENTIFIER = "khromium_shield_checkout_" + "".join(
 )
 
 # Fallback paths are served by this site. Windows and macOS return the
-# launcher binaries in dist/. Linux remains an HTML placeholder.
+# desktop app files in dist/. Linux remains an HTML placeholder.
 DOWNLOADS = (
     ("win", "Windows", "KHROMIUM_DOWNLOAD_URL_WIN", "/downloads/khromium-windows"),
     ("mac", "macOS", "KHROMIUM_DOWNLOAD_URL_MAC", "/downloads/khromium-macos"),

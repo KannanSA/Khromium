@@ -26,7 +26,7 @@ _PLATFORM_SCRIPT = """
   else if (/Mac OS X|Macintosh/i.test(ua)) name = "macOS";
   else if (/Linux/i.test(ua) && !/Android/i.test(ua)) name = "Linux";
   if (!name) return;
-  el.textContent = "For " + name + ". Windows and macOS launchers are available after checkout. Linux is not ready yet.";
+  el.textContent = "For " + name + ". Windows and macOS apps are available after checkout. Linux is not ready yet.";
 })();
 </script>
 """
@@ -118,7 +118,7 @@ def render_home() -> str:
       <article>
         {_MARK}
         <h2>Three desktops</h2>
-        <p>Windows and macOS launchers are published by the owner. Linux is not ready yet. This page starts checkout. It does not hand out the full browser.</p>
+        <p>Windows and macOS desktop apps are published by the owner. Linux is not ready yet. This page starts checkout. It does not hand out the full browser.</p>
       </article>
     </div>
   </section>
@@ -164,8 +164,8 @@ def render_success(record: dict) -> str:
     note = "Binaries are published by the owner."
     if placeholder:
         note += (
-            " Windows and macOS download the Khromium launcher "
-            "(64-bit Windows and Intel Mac), not the full browser. "
+            " Windows and macOS download the Khromium desktop app "
+            "(a Windows program and a zip of Khromium.app for Intel Mac). "
             "Linux stays a placeholder until KHROMIUM_DOWNLOAD_URL_LINUX is set."
         )
     body = f"""
@@ -220,7 +220,7 @@ def render_download_placeholder(name: str) -> str:
             "This address does not serve a Linux executable, and it is not a full browser build."
         )
         extra = (
-            "Windows and macOS links download the Khromium launcher. "
+            "Windows and macOS links download the Khromium desktop app. "
             "Set KHROMIUM_DOWNLOAD_URL_LINUX when a Linux build is ready."
         )
     else:

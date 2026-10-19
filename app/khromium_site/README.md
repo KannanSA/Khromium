@@ -90,18 +90,18 @@ If you charge customers in the US or the EU, turn on Stripe Tax only after you h
 
 The success page links to the three download env vars. Until you set them, the buttons point at `/downloads/khromium-windows`, `/downloads/khromium-macos`, and `/downloads/khromium-linux`.
 
-`/downloads/khromium-windows` and `/downloads/khromium-macos` serve the launcher executables checked in at the repo root:
+`/downloads/khromium-windows` and `/downloads/khromium-macos` serve the desktop app checked in under `dist/`:
 
-- `dist/khromium-windows-x64.exe` — 64-bit Windows launcher (PE32+)
-- `dist/khromium-macos-intel` — Intel Mac launcher (Mach-O x86_64)
+- `dist/khromium-windows-x64.exe` — 64-bit Windows GUI program (PE32+, subsystem WINDOWS)
+- `dist/Khromium-mac-intel.zip` — zip of `Khromium.app` for Intel Mac. The executable inside is `Khromium.app/Contents/MacOS/Khromium`, a Mach-O x86_64 binary
 
-Those files come from `app/khromium_launcher/`. They are the paid companion that explains the $49 browser purchase and the $10 monthly AI plan, and they can open this site. They are **not** a full Chromium or Khromium browser build. Each response is `application/octet-stream` with `Content-Disposition: attachment`.
+Those files come from `app/khromium_launcher/`. The app shows the Khromium mark, states that a one-time browser purchase includes 30 days of AI ad-block, and that monthly AI is twice the API cost with Khromium providing the model key. A button opens only `http://127.0.0.1:8787`. They are **not** a full Chromium or Khromium browser build. Each response is `application/octet-stream` with `Content-Disposition: attachment`. The macOS filename ends in `.zip`.
 
-`/downloads/khromium-linux` stays an HTML placeholder. There is no Linux launcher in this tree.
+`/downloads/khromium-linux` stays an HTML placeholder. There is no Linux desktop app in this tree.
 
 Only `http:` and `https:` URLs, or a single-slash path, are accepted. Anything else falls back to the default path.
 
-Set `KHROMIUM_DOWNLOAD_URL_WIN`, `KHROMIUM_DOWNLOAD_URL_MAC`, or `KHROMIUM_DOWNLOAD_URL_LINUX` when the success page should point at a full browser build instead of these routes. Rebuild the launchers with `sh app/khromium_launcher/build.sh` (Zig 0.14 or newer).
+Set `KHROMIUM_DOWNLOAD_URL_WIN`, `KHROMIUM_DOWNLOAD_URL_MAC`, or `KHROMIUM_DOWNLOAD_URL_LINUX` when the success page should point at a full browser build instead of these routes. Rebuild the desktop app with `sh app/khromium_launcher/build.sh` (Zig 0.14 or newer).
 
 ## Tests
 

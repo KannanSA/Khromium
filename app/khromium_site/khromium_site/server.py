@@ -39,15 +39,15 @@ _DOWNLOAD_NAME = re.compile(r"^[a-z0-9._-]{1,80}$")
 _CHECKOUT_LIMIT = 16_384
 _WEBHOOK_LIMIT = 1_000_000
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-# Launcher executables, not a full browser build. Linux has no file here.
-_LAUNCHERS = {
+# Desktop app downloads, not a full browser build. Linux has no file here.
+_DESKTOP_APPS = {
     "khromium-windows": (
         "khromium-windows-x64.exe",
         _REPO_ROOT / "dist" / "khromium-windows-x64.exe",
     ),
     "khromium-macos": (
-        "khromium-macos-intel",
-        _REPO_ROOT / "dist" / "khromium-macos-intel",
+        "Khromium-mac-intel.zip",
+        _REPO_ROOT / "dist" / "Khromium-mac-intel.zip",
     ),
 }
 
@@ -100,9 +100,9 @@ class Site:
             if "/" in name or not _DOWNLOAD_NAME.fullmatch(name):
                 self._html(handler, 404, render_message("Not found", "That page is not on this site."))
                 return
-            launcher = _LAUNCHERS.get(name)
-            if launcher is not None:
-                filename, file_path = launcher
+            desktop_app = _DESKTOP_APPS.get(name)
+            if desktop_app is not None:
+                filename, file_path = desktop_app
                 if file_path.is_file():
                     self._file(handler, file_path, filename)
                     return
@@ -110,8 +110,8 @@ class Site:
                     handler,
                     404,
                     render_message(
-                        "Launcher is missing",
-                        f"The {filename} launcher is not in dist/. "
+                        "Desktop app is missing",
+                        f"The {filename} desktop app is not in dist/. "
                         "It is not the full browser build.",
                     ),
                 )

@@ -24,6 +24,7 @@ flowchart LR
 - [Browser purchase, monthly AI, and license keys](docs/khromium/commercial.md)
 - [Companion app](app/khromium_classifier/README.md)
 - [Download site](app/khromium_site/README.md)
+- [Desktop app for Windows and Intel Mac](app/khromium_launcher/README.md)
 
 ## Apply and compile
 
@@ -57,6 +58,8 @@ cd app/khromium_site
 python3 -m unittest discover -s tests -v
 python3 -m khromium_site --port 8787
 ```
+
+Windows and Intel Mac downloads from that site are the Khromium desktop app in `dist/`. Rebuild it with `sh app/khromium_launcher/build.sh` (Zig 0.14 or newer). That app is not a full browser build.
 
 ## Limitations
 

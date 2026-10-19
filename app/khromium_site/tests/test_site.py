@@ -18,6 +18,7 @@ import tempfile
 import threading
 import time
 import unittest
+import zipfile
 import urllib.error
 from email.message import Message
 from http.server import ThreadingHTTPServer
@@ -578,7 +579,7 @@ class ServerTests(EnvCase):
         self.assertNotEqual(body[:4], b"\xcf\xfa\xed\xfe")
         self.assertNotEqual(body[:4], b"\xfe\xed\xfa\xcf")
 
-    def test_windows_and_macos_downloads_are_launchers(self):
+    def test_windows_and_macos_downloads_are_desktop_apps(self):
         root = Path(__file__).resolve().parents[3]
         cases = (
             (
@@ -588,8 +589,8 @@ class ServerTests(EnvCase):
             ),
             (
                 "/downloads/khromium-macos",
-                root / "dist" / "khromium-macos-intel",
-                "khromium-macos-intel",
+                root / "dist" / "Khromium-mac-intel.zip",
+                "Khromium-mac-intel.zip",
             ),
         )
         for path, disk, filename in cases:
@@ -613,17 +614,33 @@ class ServerTests(EnvCase):
         self.assertEqual(win_body[pe_offset : pe_offset + 4], b"PE\x00\x00")
         self.assertEqual(int.from_bytes(win_body[pe_offset + 4 : pe_offset + 6], "little"), 0x8664)
         self.assertEqual(int.from_bytes(win_body[pe_offset + 24 : pe_offset + 26], "little"), 0x20B)
+        # IMAGE_SUBSYSTEM_WINDOWS_GUI. A console subsystem would be 3.
+        subsystem = int.from_bytes(win_body[pe_offset + 24 + 68 : pe_offset + 24 + 70], "little")
+        self.assertEqual(subsystem, 2)
+        self.assertIn("ProductName".encode("utf-16le"), win_body)
+        self.assertIn("FileDescription".encode("utf-16le"), win_body)
+        self.assertIn("khromium-windows-x64.exe".encode("utf-16le"), win_body)
 
         mac_status, _mac_headers, mac_body = self.request("GET", "/downloads/khromium-macos")
         self.assertEqual(mac_status, 200)
-        self.assertIn(mac_body[:4], (b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf"))
-        magic = int.from_bytes(mac_body[:4], "little")
+        self.assertTrue(mac_body.startswith(b"PK\x03\x04"))
+        with zipfile.ZipFile(io.BytesIO(mac_body)) as archive:
+            mach = archive.read("Khromium.app/Contents/MacOS/Khromium")
+            self.assertIn(b"Khromium", archive.read("Khromium.app/Contents/Info.plist"))
+            self.assertTrue(
+                archive.read("Khromium.app/Contents/Resources/AppIcon.icns").startswith(b"icns")
+                or archive.read("Khromium.app/Contents/Resources/AppIcon.png").startswith(b"\x89PNG")
+            )
+        self.assertIn(mach[:4], (b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf"))
+        magic = int.from_bytes(mach[:4], "little")
         self.assertIn(magic, (0xFEEDFACF, 0xCFFAEDFE))
         if magic == 0xFEEDFACF:
-            cputype = int.from_bytes(mac_body[4:8], "little")
+            cputype = int.from_bytes(mach[4:8], "little")
         else:
-            cputype = int.from_bytes(mac_body[4:8], "big")
+            cputype = int.from_bytes(mach[4:8], "big")
         self.assertEqual(cputype, 0x01000007)
+        self.assertNotIn(b"sk_live_", mach)
+        self.assertNotIn(b"sk_test_", mach)
 
 
 if __name__ == "__main__":
