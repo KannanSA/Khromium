@@ -38,6 +38,18 @@ from khromium_site.webhook import (
 _DOWNLOAD_NAME = re.compile(r"^[a-z0-9._-]{1,80}$")
 _CHECKOUT_LIMIT = 16_384
 _WEBHOOK_LIMIT = 1_000_000
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+# Launcher executables, not a full browser build. Linux has no file here.
+_LAUNCHERS = {
+    "khromium-windows": (
+        "khromium-windows-x64.exe",
+        _REPO_ROOT / "dist" / "khromium-windows-x64.exe",
+    ),
+    "khromium-macos": (
+        "khromium-macos-intel",
+        _REPO_ROOT / "dist" / "khromium-macos-intel",
+    ),
+}
 
 
 class Site:
@@ -87,6 +99,22 @@ class Site:
             name = path[len("/downloads/") :]
             if "/" in name or not _DOWNLOAD_NAME.fullmatch(name):
                 self._html(handler, 404, render_message("Not found", "That page is not on this site."))
+                return
+            launcher = _LAUNCHERS.get(name)
+            if launcher is not None:
+                filename, file_path = launcher
+                if file_path.is_file():
+                    self._file(handler, file_path, filename)
+                    return
+                self._html(
+                    handler,
+                    404,
+                    render_message(
+                        "Launcher is missing",
+                        f"The {filename} launcher is not in dist/. "
+                        "It is not the full browser build.",
+                    ),
+                )
                 return
             self._html(handler, 200, render_download_placeholder(name))
             return
@@ -219,6 +247,17 @@ class Site:
             return
         status, payload = self.process_webhook(raw, handler.headers.get("Stripe-Signature", ""))
         self._json(handler, status, payload)
+
+    def _file(self, handler, path: Path, filename: str) -> None:
+        data = path.read_bytes()
+        handler.send_response(200)
+        handler.send_header("Content-Type", "application/octet-stream")
+        handler.send_header("Content-Length", str(len(data)))
+        handler.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        handler.send_header("X-Content-Type-Options", "nosniff")
+        handler.send_header("Cache-Control", "no-cache")
+        handler.end_headers()
+        handler.wfile.write(data)
 
     def _html(self, handler, status: int, page: str, *, no_store: bool = False) -> None:
         body = page.encode("utf-8")

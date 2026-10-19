@@ -88,9 +88,20 @@ If you charge customers in the US or the EU, turn on Stripe Tax only after you h
 
 ## Downloads
 
-The success page links to the three download env vars. Until you set them, the buttons point at `/downloads/khromium-windows`, `/downloads/khromium-macos`, and `/downloads/khromium-linux`. Those routes explain that the owner publishes the binaries. Do not commit installer files here.
+The success page links to the three download env vars. Until you set them, the buttons point at `/downloads/khromium-windows`, `/downloads/khromium-macos`, and `/downloads/khromium-linux`.
 
-Only `http:` and `https:` URLs, or a single-slash path, are accepted. Anything else falls back to the placeholder path.
+`/downloads/khromium-windows` and `/downloads/khromium-macos` serve the launcher executables checked in at the repo root:
+
+- `dist/khromium-windows-x64.exe` — 64-bit Windows launcher (PE32+)
+- `dist/khromium-macos-intel` — Intel Mac launcher (Mach-O x86_64)
+
+Those files come from `app/khromium_launcher/`. They are the paid companion that explains the $49 browser purchase and the $10 monthly AI plan, and they can open this site. They are **not** a full Chromium or Khromium browser build. Each response is `application/octet-stream` with `Content-Disposition: attachment`.
+
+`/downloads/khromium-linux` stays an HTML placeholder. There is no Linux launcher in this tree.
+
+Only `http:` and `https:` URLs, or a single-slash path, are accepted. Anything else falls back to the default path.
+
+Set `KHROMIUM_DOWNLOAD_URL_WIN`, `KHROMIUM_DOWNLOAD_URL_MAC`, or `KHROMIUM_DOWNLOAD_URL_LINUX` when the success page should point at a full browser build instead of these routes. Rebuild the launchers with `sh app/khromium_launcher/build.sh` (Zig 0.14 or newer).
 
 ## Tests
 

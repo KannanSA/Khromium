@@ -567,12 +567,63 @@ class ServerTests(EnvCase):
         self.assertFalse((Path(self.tmp.name) / "issued.json").exists())
 
     def test_placeholder_download_page(self):
-        status, _headers, body = self.request("GET", "/downloads/khromium-linux")
+        status, headers, body = self.request("GET", "/downloads/khromium-linux")
         page = body.decode()
         self.assertEqual(status, 200)
+        self.assertIn("text/html", headers["content-type"])
         self.assertIn("Binaries are published by the owner", page)
         self.assertIn("Linux", page)
         self.assertNotIn("KHRO1.", page)
+        self.assertFalse(body.startswith(b"MZ"))
+        self.assertNotEqual(body[:4], b"\xcf\xfa\xed\xfe")
+        self.assertNotEqual(body[:4], b"\xfe\xed\xfa\xcf")
+
+    def test_windows_and_macos_downloads_are_launchers(self):
+        root = Path(__file__).resolve().parents[3]
+        cases = (
+            (
+                "/downloads/khromium-windows",
+                root / "dist" / "khromium-windows-x64.exe",
+                "khromium-windows-x64.exe",
+            ),
+            (
+                "/downloads/khromium-macos",
+                root / "dist" / "khromium-macos-intel",
+                "khromium-macos-intel",
+            ),
+        )
+        for path, disk, filename in cases:
+            status, headers, body = self.request("GET", path)
+            self.assertEqual(status, 200, path)
+            self.assertEqual(body, disk.read_bytes(), path)
+            self.assertEqual(headers.get("content-length"), str(len(body)))
+            self.assertNotIn("text/html", headers.get("content-type", ""))
+            self.assertEqual(headers.get("x-content-type-options"), "nosniff")
+            disposition = headers.get("content-disposition", "")
+            self.assertIn("attachment", disposition)
+            self.assertIn(f'filename="{filename}"', disposition)
+            self.assertNotIn(b"KHRO1.", body)
+            self.assertNotIn(b"sk_live_", body)
+            self.assertNotIn(b"sk_test_", body)
+
+        win_status, _win_headers, win_body = self.request("GET", "/downloads/khromium-windows")
+        self.assertEqual(win_status, 200)
+        self.assertTrue(win_body.startswith(b"MZ"))
+        pe_offset = int.from_bytes(win_body[0x3C:0x40], "little")
+        self.assertEqual(win_body[pe_offset : pe_offset + 4], b"PE\x00\x00")
+        self.assertEqual(int.from_bytes(win_body[pe_offset + 4 : pe_offset + 6], "little"), 0x8664)
+        self.assertEqual(int.from_bytes(win_body[pe_offset + 24 : pe_offset + 26], "little"), 0x20B)
+
+        mac_status, _mac_headers, mac_body = self.request("GET", "/downloads/khromium-macos")
+        self.assertEqual(mac_status, 200)
+        self.assertIn(mac_body[:4], (b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf"))
+        magic = int.from_bytes(mac_body[:4], "little")
+        self.assertIn(magic, (0xFEEDFACF, 0xCFFAEDFE))
+        if magic == 0xFEEDFACF:
+            cputype = int.from_bytes(mac_body[4:8], "little")
+        else:
+            cputype = int.from_bytes(mac_body[4:8], "big")
+        self.assertEqual(cputype, 0x01000007)
 
 
 if __name__ == "__main__":

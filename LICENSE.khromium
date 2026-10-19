@@ -9,6 +9,9 @@ This license applies only to Khromium-original work:
 - chrome/renderer/khromium
 - app/khromium_classifier
 - app/khromium_site
+- app/khromium_launcher
+- dist/khromium-macos-intel
+- dist/khromium-windows-x64.exe
 - docs/khromium
 
 It does not replace the BSD license in LICENSE. That license still governs

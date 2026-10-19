@@ -26,7 +26,7 @@ _PLATFORM_SCRIPT = """
   else if (/Mac OS X|Macintosh/i.test(ua)) name = "macOS";
   else if (/Linux/i.test(ua) && !/Android/i.test(ua)) name = "Linux";
   if (!name) return;
-  el.textContent = "For " + name + ". Windows, macOS, and Linux builds are available after checkout.";
+  el.textContent = "For " + name + ". Windows and macOS launchers are available after checkout. Linux is not ready yet.";
 })();
 </script>
 """
@@ -118,7 +118,7 @@ def render_home() -> str:
       <article>
         {_MARK}
         <h2>Three desktops</h2>
-        <p>Windows, macOS, and Linux builds are published by the owner. This page starts checkout. It does not hand out a free installer.</p>
+        <p>Windows and macOS launchers are published by the owner. Linux is not ready yet. This page starts checkout. It does not hand out the full browser.</p>
       </article>
     </div>
   </section>
@@ -164,9 +164,9 @@ def render_success(record: dict) -> str:
     note = "Binaries are published by the owner."
     if placeholder:
         note += (
-            " These buttons use placeholder /downloads/ paths until "
-            "KHROMIUM_DOWNLOAD_URL_WIN, KHROMIUM_DOWNLOAD_URL_MAC, and "
-            "KHROMIUM_DOWNLOAD_URL_LINUX point at real builds."
+            " Windows and macOS download the Khromium launcher "
+            "(64-bit Windows and Intel Mac), not the full browser. "
+            "Linux stays a placeholder until KHROMIUM_DOWNLOAD_URL_LINUX is set."
         )
     body = f"""
 <main id="main" class="panel wrap">
@@ -214,11 +214,29 @@ def render_download_placeholder(name: str) -> str:
         "khromium-linux": "Linux",
     }
     label = labels.get(name, "this platform")
+    if name == "khromium-linux":
+        detail = (
+            "Binaries are published by the owner. The Linux download is still a placeholder. "
+            "This address does not serve a Linux executable, and it is not a full browser build."
+        )
+        extra = (
+            "Windows and macOS links download the Khromium launcher. "
+            "Set KHROMIUM_DOWNLOAD_URL_LINUX when a Linux build is ready."
+        )
+    else:
+        detail = (
+            "Binaries are published by the owner. This address is a placeholder "
+            "and does not serve an executable."
+        )
+        extra = (
+            "Set KHROMIUM_DOWNLOAD_URL_WIN, KHROMIUM_DOWNLOAD_URL_MAC, and "
+            "KHROMIUM_DOWNLOAD_URL_LINUX when a build should be linked from the success page."
+        )
     body = f"""
 <main id="main" class="notice wrap">
   <h1>Download for {esc(label)}</h1>
-  <p>Binaries are published by the owner. This repository does not contain a Khromium installer, and this address is a placeholder.</p>
-  <p>Set KHROMIUM_DOWNLOAD_URL_WIN, KHROMIUM_DOWNLOAD_URL_MAC, and KHROMIUM_DOWNLOAD_URL_LINUX to the real files.</p>
+  <p>{esc(detail)}</p>
+  <p>{esc(extra)}</p>
   <p><a class="ghost" href="/">Back to Khromium</a></p>
 </main>
 """
