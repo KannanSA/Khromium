@@ -1,0 +1,278 @@
+/* Khromium download page. Original styles for an independent Chromium fork. */
+
+:root {
+  --ink: #14241c;
+  --muted: #3d4f46;
+  --line: #d5e2db;
+  --paper: #ffffff;
+  --band: #e7f3ec;
+  --accent: #0f6b4c;
+  --accent-dark: #0b553c;
+  --focus: #0f6b4c;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+}
+
+body::before {
+  content: "";
+  display: block;
+  height: 6px;
+  background: var(--accent);
+}
+
+a { color: var(--accent-dark); }
+
+a:hover { color: var(--ink); }
+
+.skip {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  transform: translateY(-150%);
+  background: var(--ink);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  z-index: 2;
+}
+
+.skip:focus { transform: none; }
+
+.wrap {
+  width: min(1080px, calc(100% - 48px));
+  margin: 0 auto;
+}
+
+header.site {
+  display: flex;
+  align-items: center;
+  min-height: 72px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 650;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-size: 1.15rem;
+}
+
+.brand svg { color: var(--accent); }
+
+.hero {
+  padding: 72px 0 88px;
+  text-align: center;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(3.4rem, 8vw, 6.25rem);
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  font-weight: 560;
+  font-weight: 600;
+}
+
+.promise {
+  margin: 22px auto 0;
+  max-width: 38rem;
+  font-size: clamp(1.2rem, 2vw, 1.45rem);
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+form.buy { margin-top: 36px; }
+
+fieldset.plans {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 210px;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.plan input { accent-color: var(--accent); margin: 0 0 8px; }
+
+.plan-name { font-weight: 650; font-weight: 700; }
+
+.plan-price {
+  font-size: 1.85rem;
+  letter-spacing: -0.04em;
+  font-weight: 650;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.plan-interval { color: var(--muted); font-size: 0.95rem; }
+
+.cta, .download, .ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 28px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  text-decoration: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.cta, .download {
+  background: var(--accent);
+  color: #fff;
+}
+
+.cta:hover, .download:hover { background: var(--accent-dark); color: #fff; }
+
+.cta { margin-top: 28px; }
+
+.platform {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.fine {
+  margin: 8px auto 0;
+  max-width: 36rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.band {
+  background: var(--band);
+  padding: 88px 0;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 36px 28px;
+}
+
+.features h2, .steps h2, .panel h2, .notice h1 {
+  margin: 0 0 10px;
+  font-size: 1.7rem;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  font-weight: 650;
+  font-weight: 700;
+}
+
+.features p, .steps p, .panel p { margin: 0; color: var(--muted); }
+
+.features svg { color: var(--accent); margin-bottom: 12px; }
+
+.steps, .panel, .notice {
+  padding: 88px 0;
+}
+
+.steps ol {
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+
+.steps li {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 2px solid var(--accent);
+}
+
+.steps strong { display: block; margin-bottom: 6px; }
+
+.panel { text-align: center; }
+
+.panel .license-key {
+  margin: 18px auto;
+  max-width: 40rem;
+  text-align: left;
+  font-family: ui-monospace, "Cascadia Code", "Segoe UI Mono", Consolas, monospace;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  background: var(--band);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--ink);
+}
+
+.downloads {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.ghost {
+  background: transparent;
+  color: var(--accent-dark);
+  border: 1px solid var(--line);
+  margin-top: 16px;
+}
+
+footer {
+  border-top: 1px solid var(--line);
+  padding: 36px 0 48px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+footer p { margin: 0 0 8px; }
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+@media (max-width: 800px) {
+  .wrap { width: min(1080px, calc(100% - 32px)); }
+  .hero { padding: 48px 0 64px; }
+  .features, .steps ol { grid-template-columns: 1fr; }
+  .band, .steps, .panel, .notice { padding: 56px 0; }
+  .plan { width: min(100%, 320px); }
+}

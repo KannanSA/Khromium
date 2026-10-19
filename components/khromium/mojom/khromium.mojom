@@ -1,0 +1,26 @@
+// Copyright 2026 Khromium. All rights reserved.
+// Proprietary commercial software. See //LICENSE.khromium.
+// Not covered by the Chromium BSD license.
+
+module khromium.mojom;
+
+// Decision returned to the renderer. The API key never crosses this interface.
+struct AnalysisDecision {
+  bool block;
+  array<string> selectors;
+  bool restore_scroll;
+  string reason;
+  bool from_cache;
+};
+
+// Browser-process agent. The API key never crosses this interface.
+// IsEntitled reports whether AI protection is active (trial or monthly plan).
+// A browser purchase with an ended trial is not entitled here, so the
+// renderer does not send DOM. Analyze sends a trimmed DOM snippet. The
+// browser uses the frame's committed URL, not anything inside the snippet,
+// as the cache key. The provider API key never crosses this interface.
+interface KhromiumAgent {
+  IsEntitled() => (bool entitled);
+
+  Analyze(string trimmed_snippet) => (AnalysisDecision decision);
+};

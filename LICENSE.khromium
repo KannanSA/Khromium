@@ -1,0 +1,37 @@
+KHROMIUM SHIELD PROPRIETARY LICENSE
+
+Copyright 2026 Kannan (Khromium). All rights reserved.
+
+This license applies only to Khromium-original work:
+
+- components/khromium
+- chrome/browser/khromium
+- chrome/renderer/khromium
+- app/khromium_classifier
+- app/khromium_site
+- app/khromium_launcher
+- dist/khromium-macos-intel
+- dist/khromium-windows-x64.exe
+- docs/khromium
+
+It does not replace the BSD license in LICENSE. That license still governs
+the upstream Chromium code in this tree. Khromium cannot relicense Chromium,
+and binary builds must keep Chromium's copyright notices and license text.
+
+1. The Khromium-original work is closed-source commercial software.
+2. No one may copy, modify, publish, distribute, sublicense, or sell it
+   except the copyright owner and a person using it under a paid Khromium
+   license issued by the owner.
+3. A paid license is required to run Khromium Shield in the browser and
+   to use the companion classifier's paid AI path. The two offers are a
+   one-time browser purchase (includes 30 days of AI) and a monthly AI
+   plan priced at twice the configured API cost. Prices are in
+   docs/khromium/commercial.md.
+4. A license key is personal and may not be shared.
+5. The software is provided AS IS, without warranty of any kind.
+
+The development HMAC secret compiled into the source is for the owner's
+builds and automated tests. It is not a free license. Before any release,
+set KHROMIUM_LICENSE_HMAC_SECRET to a private value and verify keys with
+KHROMIUM_LICENSE_SERVER. Make the repository private if these sources
+should not be public.

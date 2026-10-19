@@ -81,6 +81,7 @@ source_set("impl") {
     "//chrome/browser/gpu",
     "//chrome/browser/hid",
     "//chrome/browser/lifetime",
+    "//chrome/browser/khromium",
     "//chrome/browser/login_detection",
     "//chrome/browser/media",
     "//chrome/browser/media/prefs",

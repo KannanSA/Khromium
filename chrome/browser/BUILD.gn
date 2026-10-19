@@ -1073,6 +1073,7 @@ source_set("core") {
     ":icon_loader",
     ":icon_manager",
     ":intranet_redirect_detector",
+    "//chrome/browser/khromium",
     ":main_extra_parts",
     ":memory_details",
     ":net_benchmarking",

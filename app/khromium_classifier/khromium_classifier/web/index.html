@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Khromium classifier</title>
+  <style>
+    :root { color-scheme: light; }
+    body {
+      margin: 0;
+      background: #f4f1ea;
+      color: #1c1915;
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+    }
+    main { max-width: 820px; margin: 0 auto; padding: 36px 20px 72px; }
+    h1 { font-size: 2rem; font-weight: 600; letter-spacing: -0.03em; margin-bottom: 0.3rem; }
+    p { line-height: 1.45; }
+    .muted { color: #5c564c; }
+    label { display: block; margin-top: 16px; font-family: "Segoe UI", sans-serif; font-size: 0.85rem; }
+    select, textarea, button {
+      width: 100%; box-sizing: border-box; margin-top: 6px; padding: 10px;
+      border-radius: 6px; border: 1px solid #c8bfb0; background: #fffdf8; color: inherit;
+      font: inherit;
+    }
+    textarea { min-height: 200px; font-family: ui-monospace, monospace; font-size: 0.85rem; }
+    button {
+      width: auto; margin-top: 16px; background: #1c1915; color: #f4f1ea;
+      border: 0; cursor: pointer; font-family: "Segoe UI", sans-serif;
+    }
+    pre {
+      white-space: pre-wrap; background: #1c1915; color: #f4f1ea;
+      padding: 14px; border-radius: 6px; font-family: ui-monospace, monospace; font-size: 0.85rem;
+    }
+    .row { display: flex; gap: 16px; align-items: end; }
+    .row label { flex: 1; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Khromium classifier</h1>
+  <p class="muted">Paste a DOM snippet. The default path uses the same heuristics as the browser and does not call a model. Paid AI runs through the Khromium proxy, which holds the provider key. Customers do not paste an OpenAI or xAI key here. Live mode on this page is dev-only and requires KHROMIUM_ALLOW_BYO_KEY=1.</p>
+  <form id="form">
+    <div class="row">
+      <label>Provider
+        <select id="provider" name="provider">
+          <option value="openai">OpenAI</option>
+          <option value="grok">xAI Grok</option>
+        </select>
+      </label>
+      <label>Mode
+        <select id="mode" name="mode">
+          <option value="heuristic">Local heuristics</option>
+          <option value="live">Live model</option>
+        </select>
+      </label>
+    </div>
+    <label>HTML
+      <textarea id="html" name="html" placeholder="Paste a modal or ad container"></textarea>
+    </label>
+    <button type="submit">Classify</button>
+  </form>
+  <h2>Result</h2>
+  <pre id="out">Waiting for a snippet.</pre>
+</main>
+<script>
+const form = document.getElementById("form");
+const out = document.getElementById("out");
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  out.textContent = "Classifying…";
+  const response = await fetch("/api/classify", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      html: document.getElementById("html").value,
+      provider: document.getElementById("provider").value,
+      use_live: document.getElementById("mode").value === "live"
+    })
+  });
+  const body = await response.json();
+  out.textContent = JSON.stringify(body, null, 2);
+});
+</script>
+</body>
+</html>
